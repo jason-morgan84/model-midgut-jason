@@ -3,13 +3,14 @@ import matplotlib.patches as mpatches
 import numpy as np
 import matplotlib.animation as animation
 import math as math
-
+from matplotlib.backend_bases import MouseButton
 
 class CellTypes:
-    def __init__(self, name, shape, StartingPosition):
+    def __init__(self, name, shape, StartingPosition,colour='white'):
         self.Name=name
         self.Shape = shape
         self.StartingPosition = StartingPosition
+        self.colour=colour
 
         
 class StartingPosition:
@@ -24,30 +25,40 @@ class StartingPosition:
 
 
 class Cell:
-    def __init__(self, ID, Type, Shape, Position, Size, Velocity=[0,0]):
+    def __init__(self, ID, Type, Shape, Position, Size, colour='white',Velocity=[0,0]):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #list giving positon of CENTER of shape in format [x,y]
         self.Shape = Shape #'rectangle' or 'ellipse'
         self.Size = Size #list of size in the format [x_size,y_size]
+        self.colour=colour
         self.Velocity=Velocity #velocity of cell in the format [x,y] - defaults to 0
 
     def Draw(self):
         if self.Shape == "ellipse":
-            self.artist = mpatches.Ellipse(tuple(self.Position),self.Size[0],self.Size[1],fill=False)
+            self.artist = mpatches.Ellipse(tuple(self.Position),self.Size[0],self.Size[1],fill=True,edgecolor='black',facecolor=self.colour)
             return self.artist
         
         elif self.Shape == "rectangle":
-            self.artist = mpatches.Rectangle(tuple(self.Position),self.Size[0],self.Size[1],fill=False)
+            self.artist = mpatches.Rectangle(tuple([self.Position[0]-self.Size[0]/2,self.Position[1]-self.Size[1]/2]),self.Size[0],self.Size[1],fill=True,edgecolor='black',facecolor=self.colour)
             return self.artist
         
+    def Neighbours(Self,CellID,CellList,MaxNeighbourDistance):
+        NeighbourCells=[]
+        #consider converting cell list to dictionary to ease searching
+        #should this be within class cell or not
+        #multiply size of cell by maxneighbourdistance, find all other cells with center within this range
+        return NeighbourCells
+
+
+
 #define plot and axes
 figure, axes = plt.subplots()
 axes.set_aspect( 1 )
-
+axes.set_axis_off()
 plt.xlim(0, 40)
 plt.ylim(0, 20)
-#plt.title( 'Colored Circle' )
+plt.title( 'Drosophila Embryonic Midgut' )
 
 
 #define starting positions
@@ -62,9 +73,9 @@ OtherStartingPositions.append(StartingPosition("Other",20,[1.5,1.5],[0.75,6.25],
 
 #define starting cell types
 OverallCellTypes=[]
-OverallCellTypes.append(CellTypes("VM",'rectangle',VMStartingPositions))
-OverallCellTypes.append(CellTypes("PMEC",'rectangle',PMECStartingPositions))
-OverallCellTypes.append(CellTypes("Other",'ellipse',OtherStartingPositions))
+OverallCellTypes.append(CellTypes("VM",'rectangle',VMStartingPositions,colour='plum'))
+OverallCellTypes.append(CellTypes("PMEC",'rectangle',PMECStartingPositions,colour='powderblue'))
+OverallCellTypes.append(CellTypes("Other",'ellipse',OtherStartingPositions,colour='palegreen'))
 
 
 Cells=[]
@@ -90,7 +101,8 @@ for type in OverallCellTypes:
                             Type=type.Name,
                             Shape=type.Shape,
                             Position = [x_position, y_position],
-                            Size = position.Size))
+                            Size = position.Size,
+                            colour=type.colour))
             else:
                 for n in range(position.Number):
                     if position.DrawOrientation=='x':
@@ -103,11 +115,12 @@ for type in OverallCellTypes:
                         Type=type.Name,
                         Shape=type.Shape,
                         Position = [x_position, y_position],
-                        Size = position.Size))
+                        Size = position.Size,
+                        colour=type.colour))
 
 for cell in Cells:
     #define velocity of cell
-    if cell.Type == "PMEC" or cell.Type == "Other": cell.Velocity=[0.1,0]
+    #if cell.Type == "PMEC" or cell.Type == "Other": cell.Velocity=[0.1,0]
 
     #draw cell
     axes.add_artist(cell.Draw())
@@ -127,6 +140,14 @@ def animate(i):
     return tuple(ArtistList)
 
 ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
+
+def on_click(event):
+    if event.button is MouseButton.LEFT:
+        print(f'data coords {event.xdata} {event.ydata}')
+
+
+
+plt.connect('button_press_event', on_click)
 
 plt.show()
 
