@@ -1,92 +1,134 @@
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+import matplotlib.patches as mpatches
 import numpy as np
+import matplotlib.animation as animation
+import math as math
 
 
 class CellTypes:
-    def __init__(self, name, number, shape, x, y, size, orientation=None):
-        self.name=name
-        self.starting_number = number
-        self.starting_shape = shape
-        self.starting_position=[x,y]
-        if shape == "circle":
-            self.starting_radius = size
-        elif shape == "rectangle":
-            self.starting_size = size
-        if orientation is not None:
-            self.starting_orientation = orientation
+    def __init__(self, name, shape, StartingPosition):
+        self.Name=name
+        self.Shape = shape
+        self.StartingPosition = StartingPosition
+
         
+class StartingPosition:
+    def __init__(self,ID,Number,Size,Position,CellOrientation=0,DrawOrientation=None,DrawLimits=[0,0]):
+        self.ID = ID #pass identified of starting location
+        self.Number = Number #number of cells to be created there
+        self.Size = Size #size of cells as list [x,y]
+        self.Position = Position #position of center of first cell as list [x,y]
+        self.CellOrientation = CellOrientation #rotation of cell in degrees (defaults to 0)
+        self.DrawOrientation = DrawOrientation #should the cells be drawn as a row in x ('x') or as a row in y ('y')
+        self.DrawLimits=DrawLimits
+
+
 class Cell:
-    def __init__(self, type_identifier, shape, x, y, height, width):
-        self.type_identifier=type_identifier
-        self.starting_x = x
-        self.starting_y = y
-        self.shape = shape
-        self.starting_height = height
-        self.starting_width=width
+    def __init__(self, ID, Type, Shape, Position, Size, Velocity=[0,0]):
+        self.ID=ID
+        self.Type=Type #Type of cell should match an item in CellTypes
+        self.Position = Position #list giving positon of CENTER of shape in format [x,y]
+        self.Shape = Shape #'rectangle' or 'ellipse'
+        self.Size = Size #list of size in the format [x_size,y_size]
+        self.Velocity=Velocity #velocity of cell in the format [x,y] - defaults to 0
 
     def Draw(self):
-        if self.shape == "circle":
-            return plt.Circle((self.starting_x,self.starting_y),self.starting_height/2,fill=False)
-        elif self.shape == "rectangle":
-            return plt.Rectangle([self.starting_x,self.starting_y],self.starting_width,self.starting_height,fill=False)
-
-#define starting cell types
-#Adjust so single cell type and multiple starting positions
-OverallCellTypes=[]
-OverallCellTypes.append(CellTypes("VM",10,"rectangle",0,5,[2,1],'x'))
-OverallCellTypes.append(CellTypes("PMEC",10,"rectangle",0,6,[1,2],'x'))
-OverallCellTypes.append(CellTypes("PMEC",10,"rectangle",0,12,[1,2],'x'))
-OverallCellTypes.append(CellTypes("VM",10,"rectangle",0,14,[2,1],'x'))
-
-Cells=[]
-
-
-#draw current cells
-for type in OverallCellTypes:
-    if type.starting_shape=="rectangle":
-        x_size = type.starting_size[0]
-        y_size = type.starting_size[1]
-    elif type.starting_shape=="circle":
-        x_size = type.starting_radius
-        y_size = type.starting_radius
-    for n in range(type.starting_number):
-
-        if type.starting_orientation=='x':
-            x_position = type.starting_position[0]+n*x_size
-            y_position = type.starting_position[1]
-        elif type.starting_orientation == 'y':
-            x_position = type.starting_position[0]
-            y_position = type.starting_position[1]+n*y_size
-        #else:
-            ###fill in the gaps of what happens when no orientation - fill the region with n cells
-
-        if type.starting_shape=="rectangle":
-            Cells.append(Cell(type_identifier=type.name,
-                            shape=type.starting_shape,
-                            x=x_position,
-                            y=y_position,
-                            height=type.starting_size[1],
-                            width=type.starting_size[0]))
-        elif type.starting_shape=="circle":
-            Cells.append(Cell(type_identifier=type.name,
-                            shape=type.starting_shape,
-                            x=x_position+type.starting_radius/2,
-                            y=y_position+type.starting_radius/2,
-                            height=type.starting_radius,
-                            width=type.starting_radius))
-
+        if self.Shape == "ellipse":
+            self.artist = mpatches.Ellipse(tuple(self.Position),self.Size[0],self.Size[1],fill=False)
+            return self.artist
+        
+        elif self.Shape == "rectangle":
+            self.artist = mpatches.Rectangle(tuple(self.Position),self.Size[0],self.Size[1],fill=False)
+            return self.artist
+        
+#define plot and axes
 figure, axes = plt.subplots()
 axes.set_aspect( 1 )
 
-for cell in Cells:
-    axes.add_artist(cell.Draw())
-
 plt.xlim(0, 40)
 plt.ylim(0, 20)
-plt.title( 'Colored Circle' )
-plt.show()
+#plt.title( 'Colored Circle' )
 
+
+#define starting positions
+VMStartingPositions=[]
+VMStartingPositions.append(StartingPosition("UpperVM",20,[2,1],[1,13.5],0,'x'))
+VMStartingPositions.append(StartingPosition("LowerVM",20,[2,1],[1,3],0,'x'))
+PMECStartingPositions=[]
+PMECStartingPositions.append(StartingPosition("UpperPMEC",10,[1,2],[0.5,12],0,'x'))
+PMECStartingPositions.append(StartingPosition("LowerPMEC",10,[1,2],[0.5,4.5],0,'x'))
+OtherStartingPositions=[]
+OtherStartingPositions.append(StartingPosition("Other",20,[1.5,1.5],[0.75,6.25],0,'pack',[11,11.5]))
+
+#define starting cell types
+OverallCellTypes=[]
+OverallCellTypes.append(CellTypes("VM",'rectangle',VMStartingPositions))
+OverallCellTypes.append(CellTypes("PMEC",'rectangle',PMECStartingPositions))
+OverallCellTypes.append(CellTypes("Other",'ellipse',OtherStartingPositions))
+
+
+Cells=[]
+#initialise cells
+for type in OverallCellTypes:
+    for position in type.StartingPosition:
+            if position.DrawOrientation=='pack':
+                #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
+                #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
+                MaxCellsRow = int((abs(position.DrawLimits[0]-position.Position[0]))/position.Size[0])
+                VertDistance = math.sin(math.pi/3)*position.Size[1]
+                MaxRows = int((abs(position.DrawLimits[1]-position.Position[1]))/VertDistance)
+                n=0
+                for y in range(MaxRows):
+                    y_position=position.Position[1]+y*VertDistance
+                    for x in range(MaxCellsRow):
+                        n=n+1
+                        if (y%2==0):
+                            x_position=position.Position[0]+x*position.Size[0]
+                        else:
+                            x_position=position.Position[0]+x*position.Size[0]+position.Size[0]/2
+                        Cells.append(Cell(ID=type.Name+position.ID+str(n),
+                            Type=type.Name,
+                            Shape=type.Shape,
+                            Position = [x_position, y_position],
+                            Size = position.Size))
+            else:
+                for n in range(position.Number):
+                    if position.DrawOrientation=='x':
+                        x_position = position.Position[0]-position.Size[0]/2+position.Size[0]*n
+                        y_position = position.Position[1]-position.Size[1]/2
+                    elif position.DrawOrientation=='y':
+                        x_position = position.Position[0]-position.Size[0]/2
+                        y_position = position.Position[1]-position.Size[1]/2+position.Size[1]*n                        
+                    Cells.append(Cell(ID=type.Name+position.ID+str(n),
+                        Type=type.Name,
+                        Shape=type.Shape,
+                        Position = [x_position, y_position],
+                        Size = position.Size))
+
+for cell in Cells:
+    #define velocity of cell
+    if cell.Type == "PMEC" or cell.Type == "Other": cell.Velocity=[0.1,0]
+
+    #draw cell
+    axes.add_artist(cell.Draw())
+
+# Animation function
+def animate(i):
+    ArtistList=[]
+    for cell in Cells:
+        cell.Position[0]=cell.Position[0]+cell.Velocity[0]
+        cell.Position[1]=cell.Position[1]+cell.Velocity[1]
+        if cell.Shape=='rectangle':
+            cell.artist.xy=[cell.Position[0],cell.Position[1]]
+        elif cell.Shape=='ellipse':
+            cell.artist.center=[cell.Position[0],cell.Position[1]]
+      
+        ArtistList.append(cell.artist)
+    return tuple(ArtistList)
+
+ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
+
+plt.show()
 
 
 
