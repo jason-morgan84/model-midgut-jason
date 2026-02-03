@@ -1,6 +1,7 @@
 import matplotlib.patches as mpatches
 import shapely.geometry as sg
 import math
+import shapely
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -54,6 +55,7 @@ class Cells:
         self.Morphology = Morphology #class containing information about cells shape and size
         self.Format = Format #class containing information about the cells fill and line colour
         self.Dynamics = Dynamics #class containing information about cell speed and forces applied
+        #self.Neighbours = Neighbours #list of XY coordinates of nearby cells 
 
     def __getitem__(self,index):
         return getattr(self,index)
@@ -66,7 +68,8 @@ class Cells:
                 height = self.Morphology.Size.Y,
                 fill = True,edgecolor=self.Format.LineColour,
                 facecolor = self.Format.FillColour,
-                picker = True)
+                picker = True,
+                zorder = 5)
             return self.artist
         
         elif self.Morphology.Shape == "Rectangle":
@@ -77,11 +80,12 @@ class Cells:
                 fill = True,
                 edgecolor = self.Format.LineColour,
                 facecolor = self.Format.FillColour,
-                picker = True)
+                picker = True,
+                zorder = 5)
             return self.artist
         
     def GetCellCoords(self):
-        #gets a list of coordinates of rectangle or ellipse shaped cells for use in comparisons between cells using Shapely
+        #Generates a list of coordinates of rectangle or ellipse shaped cells for use in comparisons between cells using Shapely
         coords=[]
         if self.Morphology.Shape == 'Rectangle':
             rectangle_center = self.Position
@@ -120,26 +124,46 @@ class CellList:
 
 
     def Neighbours(self, CellID, MaxNeighbourDistance):
-        #Looks for cells that are within a rectangle with height and width of those of the cell of interest
-        #(defined by its index in Cells_List) multiplied by MaxNeighbourDistance, centred on the center of the cell of interest.
+        #Uses same algorithm as GetNodeNetwork to find neighbours of a single cell
+        #Mostly replaced by GetNodeNetwork
 
         NeighbourCells=[]
-        Cell_Top = self.Cells_List[CellID].Position.Y + (self.Cells_List[CellID].Morphology.Size.Y/2)*MaxNeighbourDistance
-        Cell_Bottom = self.Cells_List[CellID].Position.Y - (self.Cells_List[CellID].Morphology.Size.Y/2)*MaxNeighbourDistance
-        Cell_Left = self.Cells_List[CellID].Position.X - (self.Cells_List[CellID].Morphology.Size.X/2)*MaxNeighbourDistance
-        Cell_Right = self.Cells_List[CellID].Position.X + (self.Cells_List[CellID].Morphology.Size.X/2)*MaxNeighbourDistance
- 
-        for n,cells in enumerate(self.Cells_List):
-            Test_Cell_Top = cells.Position.Y + cells.Morphology.Size.Y/2
-            Test_Cell_Bottom = cells.Position.Y - cells.Morphology.Size.Y/2
-            Test_Cell_Left = cells.Position.X - cells.Morphology.Size.X/2
-            Test_Cell_Right = cells.Position.X + cells.Morphology.Size.X/2
-            Test = sg.box(Cell_Left,Cell_Bottom,Cell_Right,Cell_Top).intersection(sg.box(Test_Cell_Left,Test_Cell_Bottom,Test_Cell_Right,Test_Cell_Top))
-            if(str(Test)!="POLYGON EMPTY"): 
-                if n!= CellID: NeighbourCells.append(n)
+        CellCoords = self.Cells_List[CellID].GetCellCoords()
+        CellPolygon = shapely.Polygon(CellCoords).buffer(MaxNeighbourDistance)
 
-        #multiply size of cell by maxneighbourdistance, find all other cells with center within this range
+        for n,cell in enumerate(self.Cells_List):
+            TestCellCoords = cell.GetCellCoords()
+            TestCellPolygon = shapely.Polygon(TestCellCoords)
+            Test = CellPolygon.intersection(TestCellPolygon)   
+            if (Test.is_empty==False):
+                if n!= CellID: NeighbourCells.append(n)
         return NeighbourCells
+    
+    def GetNodeNetwork(self,MaxNeighbourDistance):
+        #Node network is a list of lists of length number of cells
+        NodeNetwork = [[] for _ in range(len(self.Cells_List))]
+
+        for n, cell in enumerate(self.Cells_List):
+            #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
+            #generate Shapely.Polygon for current cell (only once)
+            CellCoords = cell.GetCellCoords()
+            CellPolygon = shapely.Polygon(CellCoords)
+
+            for i in range(n+1,len(self.Cells_List),1):
+                #generate Shapely.Polygon for test cell
+                TestCellCoords = self.Cells_List[i].GetCellCoords()
+                TestCellPolygon = shapely.Polygon(TestCellCoords)
+
+                #Create polygon containing intersection between the region around cell of interest and test cell
+                Test = CellPolygon.buffer(MaxNeighbourDistance).intersection(TestCellPolygon)
+
+                #if polygon contains points, the regions intesersect; add each cell to the other cells network.
+                if (Test.is_empty==False):
+                    NodeNetwork[n].append(i)
+                    NodeNetwork[i].append(n)
+
+
+        return NodeNetwork
     
 
 

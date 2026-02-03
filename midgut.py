@@ -19,7 +19,7 @@ import Cell
 
 #TO DO:
 
-#1: Add node networking to cell list
+#1: Add node networking to cell list - done
 #2: Add ability to change packing density
 ############2.1: Organisation of cells (pack, line etc) as kwargs
 ############2.2: Other required details (number of cells, direction, region to pack) as kwargs
@@ -27,6 +27,11 @@ import Cell
 ############2.4: Random variation in cell size
 #3: Add movement and collision detection
 ############3.1: Random movement
+#4: Consider whether it would be better to store coords of all polygons and increment with movement, or re-calcluate coords whenver
+#needed - depends how often coords are generated.
+#5: Move cell initialisation into a relevant class
+############5.1: cell list? or starting location?
+############5.2: reorder definitions - cell types first (with empty arrays for starting locations) then starting locations
 
 
 
@@ -129,10 +134,29 @@ for type in OverallCellTypes:
 
 for cell in Cells:
     #define velocity of cell
-    #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
+    if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
 
     #draw cell
     axes.add_artist(cell.Draw())
+
+Nodes=Cells.GetNodeNetwork(1)
+
+connectionartist=[]
+
+connectiondictionary=set()
+for n,node in enumerate(Nodes):
+    for cell in node:
+        if n > cell:
+            connectiondictionary.add((n,cell))
+        else:
+            connectiondictionary.add((cell,n))
+
+for item in connectiondictionary:
+    connectedcells = list(item)
+    connectionartist.append(mpatches.ConnectionPatch(tuple(Cells[connectedcells[0]].Position.AsList()),tuple(Cells[connectedcells[1]].Position.AsList()),'data','data',zorder=5))
+
+for item in connectionartist:
+    axes.add_artist(item)
 
 
 # Animation function
@@ -141,15 +165,24 @@ def animate(i):
     for cell in Cells:
         cell.Position.X += cell.Dynamics.Velocity.X
         cell.Position.Y += cell.Dynamics.Velocity.Y
+        cell.artist.zorder = 0
         if cell.Morphology.Shape == 'Rectangle':
             cell.artist.xy = [cell.Position.X-cell.Morphology.Size.X/2,cell.Position.Y-cell.Morphology.Size.Y/2]
         elif cell.Morphology.Shape == 'Ellipse':
             cell.artist.center = cell.Position.AsList()
       
         ArtistList.append(cell.artist)
+    
+    #for item in connectionartist:
+    #    ArtistList.append(item)
+
     return tuple(ArtistList)
 
-ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
+ani = animation.FuncAnimation(figure, animate, frames=1000, interval=1, blit=True)
+
+
+
+
 
 """ def on_click(event):
     if event.button is MouseButton.LEFT:
@@ -159,20 +192,21 @@ def onpick1(event):
     artist=False
     if isinstance(event.artist, mpatches.Rectangle) or isinstance(event.artist, mpatches.Ellipse):
         artist=True
+        for cell in Cells:
+            cell.artist.set_edgecolor('black')
         center = Cell.XY(event.artist.get_center()[0],event.artist.get_center()[1])
         for n, cell in enumerate(Cells):
             if cell.Position.X==center.X and cell.Position.Y==center.Y: 
                 Neighbours = Cells.Neighbours(n,1.5)
-                print(n, cell.GetCellCoords())
-        for cell in Cells:
-            cell.artist.set_edgecolor('black')
-        for item in Neighbours:
-            Cells[item].artist.set_edgecolor('red')
+                print(n, Neighbours,Nodes[n])
+                for item in Nodes[n]:
+                    Cells[item].artist.set_edgecolor('red')
+
+
                     
                     
     if artist==False:
         print("Reset")
-
 
 
 #plt.connect('button_press_event', on_click)
