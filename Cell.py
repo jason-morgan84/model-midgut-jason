@@ -12,6 +12,10 @@ class XY:
         ClassToList = [self.X,self.Y]
         return ClassToList
     
+    def AsTuple(self):
+        ClassToTuple = (self.X,self.Y)
+        return ClassToTuple
+    
     def __str__(self):
         return '[' + str(self.X)+', '+str(self.Y)+']'
 
@@ -22,13 +26,21 @@ class CellTypes:
         self.Format=Format
 
 class StartingPosition:
-    def __init__(self, ID, Number, Position, Morphology, DrawOrientation = None, DrawLimits=XY(0,0)):
+    #removed for kwargs
+    def __init__(self, ID, Position, Morphology, **kwargs):
         self.ID = ID #pass identified of starting location
-        self.Number = Number #number of cells to be created there
         self.Morphology = Morphology #class containing information about cells shape and size
         self.Position = Position #position of center of first cell as list [x,y]
-        self.DrawOrientation = DrawOrientation #should the cells be drawn as a row in x ('x') or as a row in y ('y')
-        self.DrawLimits=DrawLimits
+
+        #optional definitions of arrangement of cells.
+        # XAlign aligns Number cells in a row (ellipse or rectangle) 
+        # YAlign aligns Number cells in a column (ellipse or rectangle) 
+        # Fill fills a rectangular region defined from Position to Drawlimits (ellipse or rectangle) **not currently created
+        # Pack fits cells into a rectangular region defined from Position to Drawlimits (circle only) at a given Density (1 = maximum density, 0 = no cells)
+        self.Arrange = kwargs.get('Arrange',None)
+        self.Number = kwargs.get('Number',None)
+        self.DrawLimits = kwargs.get('DrawLimits',None)
+        self.Density = kwargs.get('Density',None)
 
 class Morphology:
     def __init__(self, Shape, Size, Orientation = 0):

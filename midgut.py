@@ -14,24 +14,28 @@ import Cell
 #
 #To draw cells using MatPlotLib, the Cells.Draw function returns a MatPlotLib artist
 #To analyse cells using Shapely, the Cells.GetCoords function returns a list of coords to use in a Shapely Polygon
+#
+#A list of cells neighbouring each cell can be generated using CellList.GetNodeNetwork
 
 
 
 #TO DO:
 
-#1: Add node networking to cell list - done
-#2: Add ability to change packing density
-############2.1: Organisation of cells (pack, line etc) as kwargs
-############2.2: Other required details (number of cells, direction, region to pack) as kwargs
-############2.3: Custom packing algorithm
-############2.4: Random variation in cell size
-#3: Add movement and collision detection
-############3.1: Random movement
-#4: Consider whether it would be better to store coords of all polygons and increment with movement, or re-calcluate coords whenver
+
+#1: Add movement and collision detection
+############1.1: Random movement
+#2: Consider whether it would be better to store coords of all polygons and increment with movement, or re-calcluate coords whenver
 #needed - depends how often coords are generated.
-#5: Move cell initialisation into a relevant class
-############5.1: cell list? or starting location?
-############5.2: reorder definitions - cell types first (with empty arrays for starting locations) then starting locations
+#3: Add legend of cell types
+#4: Move cell initialisation into a relevant class
+############4.1: Create new class for lists of cell types
+############4.2: Move cell initialisation into this class
+############4.3: reorder definitions - cell types first (with empty arrays for starting locations) then starting locations
+#5: Improvements to cell arrangement and packing density
+############5.1: Custom packing algorithm - allow ellipses
+############5.2: Finish "Fill" arrangement 
+############5.3: Random variation in cell size
+############5.3: Custome packing for variably sized rectangles
 
 
 
@@ -50,39 +54,39 @@ plt.title( 'Drosophila Embryonic Midgut' )
 VMStartingPositions=[]
 VMStartingPositions.append(Cell.StartingPosition(
     ID = "UpperVM",
-    Number = 20,
     Position = Cell.XY(1,13.5),
     Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-    DrawOrientation = 'x'))
+    Arrange = "XAlign",
+    Number = 20))
 VMStartingPositions.append(Cell.StartingPosition(
     ID = "LowerVM",
-    Number = 20,
     Position = Cell.XY(1,3),
     Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-    DrawOrientation = 'x'))
+    Arrange = "XAlign",
+    Number = 20))
 
 PMECStartingPositions=[]
 PMECStartingPositions.append(Cell.StartingPosition(
     ID = "UpperPMEC",
-    Number = 10,
     Position = Cell.XY(0.5,12),
     Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
-    DrawOrientation = 'x'))
+    Arrange = "XAlign",
+    Number = 10))
 PMECStartingPositions.append(Cell.StartingPosition(
     ID = "LowerPMEC",
-    Number = 10,
     Position = Cell.XY(0.5,4.5),
     Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
-    DrawOrientation = 'x'))
+    Arrange = "XAlign",
+    Number = 10))
 
 OtherStartingPositions=[]
 OtherStartingPositions.append(Cell.StartingPosition(
     ID = "Other",
-    Number = 20,
     Position = Cell.XY(0.75,6.25),
     Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
-    DrawOrientation = 'pack',
-    DrawLimits = Cell.XY(11,11.5)))
+    Arrange = 'Pack',
+    DrawLimits = Cell.XY(11,11.5),
+    Density = 0.8))
 
 #define starting cell types
 OverallCellTypes=[]
@@ -93,35 +97,39 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other", StartingPosition = OtherS
 Cells=Cell.CellList()
 #initialise cells
 for type in OverallCellTypes:
+    print(type)
     for position in type.StartingPosition:
-            if position.DrawOrientation=='pack':
-                #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
-                #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
-                MaxCellsRow = int((abs(position.DrawLimits.X - position.Position.X)) / position.Morphology.Size.X)
-                VertDistance = math.sin(math.pi / 3) * position.Morphology.Size.Y
-                MaxRows = int((abs(position.DrawLimits.Y - position.Position.Y)) / VertDistance)
-                n = 0
-                for y in range(MaxRows):
-                    y_position = position.Position.Y + y * VertDistance
-                    for x in range(MaxCellsRow):
-                        n = n + 1
-                        if (y % 2 == 0):
-                            x_position = position.Position.X + x * position.Morphology.Size.X
-                        else:
-                            x_position = position.Position.X + x * position.Morphology.Size.X + position.Morphology.Size.X / 2
-                        Cells.AddCell(Cell.Cells(
-                            ID = '-'.join((type.Name, position.ID, str(n))),
-                            Type = type.Name,
-                            Position = Cell.XY(x_position, y_position),
-                            Morphology = position.Morphology,
-                            Format = type.Format,
-                            Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
-            else:
+            print(position)
+            if position.Arrange == 'Pack':
+                if position.Density != 0:
+                    #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
+                    #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
+                    MaxCellsRow = int((abs(position.DrawLimits.X - position.Position.X)) / (position.Morphology.Size.X/position.Density))
+                    VertDistance = (math.sin(math.pi / 3) * position.Morphology.Size.Y) / position.Density
+                    MaxRows = int((abs(position.DrawLimits.Y - position.Position.Y)) / VertDistance)
+                    n = 0
+                    for y in range(MaxRows):
+                        y_position = position.Position.Y + y * VertDistance
+                        for x in range(MaxCellsRow):
+                            n = n + 1
+                            if (y % 2 == 0):
+                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density)
+                            else:
+                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density) + position.Morphology.Size.X / 2
+                            Cells.AddCell(Cell.Cells(
+                                ID = '-'.join((type.Name, position.ID, str(n))),
+                                Type = type.Name,
+                                Position = Cell.XY(x_position, y_position),
+                                Morphology = position.Morphology,
+                                Format = type.Format,
+                                Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
+            elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
+                print("Hello")
                 for n in range(position.Number):
-                    if position.DrawOrientation == 'x':
+                    if position.Arrange == 'XAlign':
                         x_position = position.Position.X + position.Morphology.Size.X * n
                         y_position = position.Position.Y
-                    elif position.DrawOrientation == 'y':
+                    elif position.Arrange == 'YAlign':
                         x_position = position.Position.X
                         y_position = position.Position.Y + position.Morphology.Size.Y * n                        
                     Cells.AddCell(Cell.Cells(
@@ -131,33 +139,26 @@ for type in OverallCellTypes:
                         Morphology = position.Morphology,
                         Format = type.Format,
                         Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
+            else:
+                x_position = position.Position.X
+                y_position = position.Position.Y
+                Cells.AddCell(Cell.Cells(
+                    ID = '-'.join((type.Name,position.ID)),
+                    Type = type.Name,
+                    Position = Cell.XY(float(x_position), float(y_position)),
+                    Morphology = position.Morphology,
+                    Format = type.Format,
+                    Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
+
 
 for cell in Cells:
     #define velocity of cell
-    if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
+    #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
 
     #draw cell
     axes.add_artist(cell.Draw())
 
 Nodes=Cells.GetNodeNetwork(1)
-
-connectionartist=[]
-
-connectiondictionary=set()
-for n,node in enumerate(Nodes):
-    for cell in node:
-        if n > cell:
-            connectiondictionary.add((n,cell))
-        else:
-            connectiondictionary.add((cell,n))
-
-for item in connectiondictionary:
-    connectedcells = list(item)
-    connectionartist.append(mpatches.ConnectionPatch(tuple(Cells[connectedcells[0]].Position.AsList()),tuple(Cells[connectedcells[1]].Position.AsList()),'data','data',zorder=5))
-
-for item in connectionartist:
-    axes.add_artist(item)
-
 
 # Animation function
 def animate(i):
@@ -173,15 +174,9 @@ def animate(i):
       
         ArtistList.append(cell.artist)
     
-    #for item in connectionartist:
-    #    ArtistList.append(item)
-
     return tuple(ArtistList)
 
 ani = animation.FuncAnimation(figure, animate, frames=1000, interval=1, blit=True)
-
-
-
 
 
 """ def on_click(event):
@@ -189,24 +184,20 @@ ani = animation.FuncAnimation(figure, animate, frames=1000, interval=1, blit=Tru
         print(f'data coords {event.xdata} {event.ydata}') """
 
 def onpick1(event):
-    artist=False
     if isinstance(event.artist, mpatches.Rectangle) or isinstance(event.artist, mpatches.Ellipse):
-        artist=True
         for cell in Cells:
             cell.artist.set_edgecolor('black')
         center = Cell.XY(event.artist.get_center()[0],event.artist.get_center()[1])
         for n, cell in enumerate(Cells):
             if cell.Position.X==center.X and cell.Position.Y==center.Y: 
                 Neighbours = Cells.Neighbours(n,1.5)
-                print(n, Neighbours,Nodes[n])
+                #print(n, Neighbours,Nodes[n])
                 for item in Nodes[n]:
-                    Cells[item].artist.set_edgecolor('red')
-
-
-                    
-                    
-    if artist==False:
+                    Cells[item].artist.set_edgecolor('red')     
+    else:
         print("Reset")
+        for cell in Cells:
+            cell.artist.set_edgecolor('black')
 
 
 #plt.connect('button_press_event', on_click)
