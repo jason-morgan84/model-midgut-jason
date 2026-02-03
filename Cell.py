@@ -1,5 +1,7 @@
 import matplotlib.patches as mpatches
 import shapely.geometry as sg
+import math
+import shapely
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -28,77 +30,6 @@ class StartingPosition:
         self.DrawOrientation = DrawOrientation #should the cells be drawn as a row in x ('x') or as a row in y ('y')
         self.DrawLimits=DrawLimits
 
-class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics):
-        self.ID=ID
-        self.Type=Type #Type of cell should match an item in CellTypes
-        self.Position = Position #list giving positon of CENTER of shape in format [x,y]
-        self.Morphology = Morphology #class containing information about cells shape and size
-        self.Format = Format #class containing information about the cells fill and line colour
-        self.Dynamics = Dynamics #class containing information about cell speed and forces applied
-
-    def __getitem__(self,index):
-        return getattr(self,index)
-   
-    def Draw(self):
-        if self.Morphology.Shape == "Ellipse":
-            self.artist = mpatches.Ellipse(
-                xy = tuple(self.Position.AsList()),
-                width = self.Morphology.Size.X,
-                height = self.Morphology.Size.Y,
-                fill = True,edgecolor=self.Format.LineColour,
-                facecolor = self.Format.FillColour,
-                picker = True)
-            return self.artist
-        
-        elif self.Morphology.Shape == "Rectangle":
-            self.artist = mpatches.Rectangle(
-                xy = tuple([float(self.Position.X - self.Morphology.Size.X/2), self.Position.Y - self.Morphology.Size.Y / 2]),
-                width = self.Morphology.Size.X,
-                height = self.Morphology.Size.Y,
-                fill = True,
-                edgecolor = self.Format.LineColour,
-                facecolor = self.Format.FillColour,
-                picker = True)
-            return self.artist
-
-class CellList:
-    def __init__(self):
-        self.Cells_List=[] 
-
-    def __getitem__(self,index):
-        return self.Cells_List[index]
-
-    def FindCell(self, CellID):
-        for n,item in enumerate(self.Cells_List):
-            if item.ID == CellID:
-                return n
-            
-    def AddCell(self,Cell):
-        self.Cells_List.append(Cell)
-        
-    def Neighbours(self, CellID, MaxNeighbourDistance):
-        #Looks for cells that are within a rectangle with height and width of those of the cell of interest
-        #(defined by its index in Cells_List) multiplied by MaxNeighbourDistance, centred on the center of the cell of interest.
-
-        NeighbourCells=[]
-        Cell_Top = self.Cells_List[CellID].Position.Y + (self.Cells_List[CellID].Morphology.Size.Y/2)*MaxNeighbourDistance
-        Cell_Bottom = self.Cells_List[CellID].Position.Y - (self.Cells_List[CellID].Morphology.Size.Y/2)*MaxNeighbourDistance
-        Cell_Left = self.Cells_List[CellID].Position.X - (self.Cells_List[CellID].Morphology.Size.X/2)*MaxNeighbourDistance
-        Cell_Right = self.Cells_List[CellID].Position.X + (self.Cells_List[CellID].Morphology.Size.X/2)*MaxNeighbourDistance
- 
-        for n,cells in enumerate(self.Cells_List):
-            Test_Cell_Top = cells.Position.Y + cells.Morphology.Size.Y/2
-            Test_Cell_Bottom = cells.Position.Y - cells.Morphology.Size.Y/2
-            Test_Cell_Left = cells.Position.X - cells.Morphology.Size.X/2
-            Test_Cell_Right = cells.Position.X + cells.Morphology.Size.X/2
-            Test = sg.box(Cell_Left,Cell_Bottom,Cell_Right,Cell_Top).intersection(sg.box(Test_Cell_Left,Test_Cell_Bottom,Test_Cell_Right,Test_Cell_Top))
-            if(str(Test)!="POLYGON EMPTY"): 
-                if n!= CellID: NeighbourCells.append(n)
-
-        #multiply size of cell by maxneighbourdistance, find all other cells with center within this range
-        return NeighbourCells
-    
 class Morphology:
     def __init__(self, Shape, Size, Orientation = 0):
         self.Shape = Shape
@@ -115,6 +46,126 @@ class Dynamics:
     def __init__(self, Velocity=[0,0], Force = [0,0]):
         self.Velocity=Velocity
         self.Force = Force
+
+class Cells:
+    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics):
+        self.ID=ID
+        self.Type=Type #Type of cell should match an item in CellTypes
+        self.Position = Position #list giving positon of CENTER of shape in format [x,y]
+        self.Morphology = Morphology #class containing information about cells shape and size
+        self.Format = Format #class containing information about the cells fill and line colour
+        self.Dynamics = Dynamics #class containing information about cell speed and forces applied
+        #self.Neighbours = Neighbours #list of XY coordinates of nearby cells 
+
+    def __getitem__(self,index):
+        return getattr(self,index)
+   
+    def Draw(self):
+        if self.Morphology.Shape == "Ellipse":
+            self.artist = mpatches.Ellipse(
+                xy = tuple(self.Position.AsList()),
+                width = self.Morphology.Size.X,
+                height = self.Morphology.Size.Y,
+                fill = True,edgecolor=self.Format.LineColour,
+                facecolor = self.Format.FillColour,
+                picker = True,
+                zorder = 5)
+            return self.artist
+        
+        elif self.Morphology.Shape == "Rectangle":
+            self.artist = mpatches.Rectangle(
+                xy = tuple([float(self.Position.X - self.Morphology.Size.X/2), self.Position.Y - self.Morphology.Size.Y / 2]),
+                width = self.Morphology.Size.X,
+                height = self.Morphology.Size.Y,
+                fill = True,
+                edgecolor = self.Format.LineColour,
+                facecolor = self.Format.FillColour,
+                picker = True,
+                zorder = 5)
+            return self.artist
+        
+    def GetCellCoords(self):
+        #Generates a list of coordinates of rectangle or ellipse shaped cells for use in comparisons between cells using Shapely
+        coords=[]
+        if self.Morphology.Shape == 'Rectangle':
+            rectangle_center = self.Position
+            rectangle_size = self.Morphology.Size
+            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y+0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X+0.5*rectangle_size.X,rectangle_center.Y+0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X+0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
+
+        elif self.Morphology.Shape == 'Ellipse':
+            ellipse_center = self.Position
+            ellipse_size = self.Morphology.Size
+            step = 15
+            for angle in range (0,360,step):
+                angle_radians = (angle/180)*math.pi
+                x = ellipse_center.X + (ellipse_size.X/2)*math.cos(angle_radians)
+                y = ellipse_center.Y + (ellipse_size.Y/2)*math.sin(angle_radians)
+                coords.append([x,y])
+        return coords
+
+class CellList:
+    def __init__(self):
+        self.Cells_List=[] 
+
+    def __getitem__(self,index):
+        return self.Cells_List[index]
+
+    def FindCell(self, CellID):
+        for n,item in enumerate(self.Cells_List):
+            if item.ID == CellID:
+                return n
+            
+    def AddCell(self,Cell):
+        self.Cells_List.append(Cell)
+
+
+    def Neighbours(self, CellID, MaxNeighbourDistance):
+        #Uses same algorithm as GetNodeNetwork to find neighbours of a single cell
+        #Mostly replaced by GetNodeNetwork
+
+        NeighbourCells=[]
+        CellCoords = self.Cells_List[CellID].GetCellCoords()
+        CellPolygon = shapely.Polygon(CellCoords).buffer(MaxNeighbourDistance)
+
+        for n,cell in enumerate(self.Cells_List):
+            TestCellCoords = cell.GetCellCoords()
+            TestCellPolygon = shapely.Polygon(TestCellCoords)
+            Test = CellPolygon.intersection(TestCellPolygon)   
+            if (Test.is_empty==False):
+                if n!= CellID: NeighbourCells.append(n)
+        return NeighbourCells
+    
+    def GetNodeNetwork(self,MaxNeighbourDistance):
+        #Node network is a list of lists of length number of cells
+        NodeNetwork = [[] for _ in range(len(self.Cells_List))]
+
+        for n, cell in enumerate(self.Cells_List):
+            #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
+            #generate Shapely.Polygon for current cell (only once)
+            CellCoords = cell.GetCellCoords()
+            CellPolygon = shapely.Polygon(CellCoords)
+
+            for i in range(n+1,len(self.Cells_List),1):
+                #generate Shapely.Polygon for test cell
+                TestCellCoords = self.Cells_List[i].GetCellCoords()
+                TestCellPolygon = shapely.Polygon(TestCellCoords)
+
+                #Create polygon containing intersection between the region around cell of interest and test cell
+                Test = CellPolygon.buffer(MaxNeighbourDistance).intersection(TestCellPolygon)
+
+                #if polygon contains points, the regions intesersect; add each cell to the other cells network.
+                if (Test.is_empty==False):
+                    NodeNetwork[n].append(i)
+                    NodeNetwork[i].append(n)
+
+
+        return NodeNetwork
+    
+
 
 
 
