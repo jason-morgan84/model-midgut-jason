@@ -23,9 +23,16 @@ import Cell
 
 
 #1: Add movement and collision detection
-############1.1: Random movement
-#2: Consider whether it would be better to store coords of all polygons and increment with movement, or re-calcluate coords whenver
-#needed - depends how often coords are generated.
+############1.2: Change cell.Position to include coords of polygon points
+############1.3: Add function to update all associated positions with movement
+##########################1.3.1 Consider whether all storage positions are required
+############1.4: Consider adding to getnodes function to get distance to each of the closest cells (ideally in x/y components)
+############1.5: Add collision detection with closest cells only
+##########################1.5.1: For testing: Make collision propogate speed through cells
+############1.6: Look up potential property to simply define effects of collision - elasticity?
+############1.7: Random movement?
+#2: Add adhesion
+############2.1: Add movement to PMECs
 #3: Add legend of cell types
 #4: Move cell initialisation into a relevant class
 ############4.1: Create new class for lists of cell types
@@ -163,20 +170,20 @@ Nodes=Cells.GetNodeNetwork(1)
 # Animation function
 def animate(i):
     ArtistList=[]
+    #if (i % 20==0): 
+    Nodes=Cells.GetNodeNetwork(1)
     for cell in Cells:
         cell.Position.X += cell.Dynamics.Velocity.X
         cell.Position.Y += cell.Dynamics.Velocity.Y
-        cell.artist.zorder = 0
         if cell.Morphology.Shape == 'Rectangle':
             cell.artist.xy = [cell.Position.X-cell.Morphology.Size.X/2,cell.Position.Y-cell.Morphology.Size.Y/2]
         elif cell.Morphology.Shape == 'Ellipse':
             cell.artist.center = cell.Position.AsList()
       
         ArtistList.append(cell.artist)
-    
     return tuple(ArtistList)
 
-ani = animation.FuncAnimation(figure, animate, frames=1000, interval=1, blit=True)
+ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
 
 
 """ def on_click(event):
@@ -184,14 +191,15 @@ ani = animation.FuncAnimation(figure, animate, frames=1000, interval=1, blit=Tru
         print(f'data coords {event.xdata} {event.ydata}') """
 
 def onpick1(event):
+
     if isinstance(event.artist, mpatches.Rectangle) or isinstance(event.artist, mpatches.Ellipse):
         for cell in Cells:
             cell.artist.set_edgecolor('black')
         center = Cell.XY(event.artist.get_center()[0],event.artist.get_center()[1])
         for n, cell in enumerate(Cells):
             if cell.Position.X==center.X and cell.Position.Y==center.Y: 
-                Neighbours = Cells.Neighbours(n,1.5)
-                #print(n, Neighbours,Nodes[n])
+                cell.Dynamics.Velocity.X = (np.random.random()-0.5)*0.5
+                cell.Dynamics.Velocity.Y = (np.random.random()-0.5)*0.5
                 for item in Nodes[n]:
                     Cells[item].artist.set_edgecolor('red')     
     else:
