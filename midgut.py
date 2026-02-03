@@ -6,21 +6,36 @@ import math as math
 from matplotlib.backend_bases import MouseButton
 import Cell
 
+#Each cell is defined using it's shape (currently, ellipse or rectangle), its center point (using XY class) and 
+#its size (using XY class - full width and height, not radius). 
+# 
+#Characteristics of individual cells are stored in the Cells class and a list of all cells are maintained in the CellList class.
+#The CellList class allows adding ("CellList.AddCell(cell)") Cells class objects and iteration through cells.
+#
+#To draw cells using MatPlotLib, the Cells.Draw function returns a MatPlotLib artist
+#To analyse cells using Shapely, the Cells.GetCoords function returns a list of coords to use in a Shapely Polygon
+
 
 
 #TO DO:
 
-#Add change colour of 
+#1: Add node networking to cell list
+#2: Add ability to change packing density
+############2.1: Organisation of cells (pack, line etc) as kwargs
+############2.2: Other required details (number of cells, direction, region to pack) as kwargs
+############2.3: Custom packing algorithm
+############2.4: Random variation in cell size
+#3: Add movement and collision detection
+############3.1: Random movement
 
-#organisation of cells (pack, line etc) as kwargs
-#other required details (number of cells, direction, region to pack) as kwargs
-#add ability to change packing density
+
+
 
 
 #define plot and axes
 figure, axes = plt.subplots()
 axes.set_aspect( 1 )
-axes.set_axis_off()
+#axes.set_axis_off()
 plt.xlim(0, 40)
 plt.ylim(0, 20)
 plt.title( 'Drosophila Embryonic Midgut' )
@@ -148,7 +163,7 @@ def onpick1(event):
         for n, cell in enumerate(Cells):
             if cell.Position.X==center.X and cell.Position.Y==center.Y: 
                 Neighbours = Cells.Neighbours(n,1.5)
-                print(n, Neighbours)
+                print(n, cell.GetCellCoords())
         for cell in Cells:
             cell.artist.set_edgecolor('black')
         for item in Neighbours:

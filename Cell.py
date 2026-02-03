@@ -1,5 +1,6 @@
 import matplotlib.patches as mpatches
 import shapely.geometry as sg
+import math
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -27,6 +28,23 @@ class StartingPosition:
         self.Position = Position #position of center of first cell as list [x,y]
         self.DrawOrientation = DrawOrientation #should the cells be drawn as a row in x ('x') or as a row in y ('y')
         self.DrawLimits=DrawLimits
+
+class Morphology:
+    def __init__(self, Shape, Size, Orientation = 0):
+        self.Shape = Shape
+        self.Size = Size
+        self.Orientation = Orientation
+
+class Format:
+    def __init__(self, FillColour='White', LineColour='Black', LineWidth=1):
+        self.FillColour=FillColour
+        self.LineColour = LineColour
+        self.LineWidth = LineWidth
+
+class Dynamics:
+    def __init__(self, Velocity=[0,0], Force = [0,0]):
+        self.Velocity=Velocity
+        self.Force = Force
 
 class Cells:
     def __init__(self, ID, Type, Position, Morphology, Format, Dynamics):
@@ -61,6 +79,29 @@ class Cells:
                 facecolor = self.Format.FillColour,
                 picker = True)
             return self.artist
+        
+    def GetCellCoords(self):
+        #gets a list of coordinates of rectangle or ellipse shaped cells for use in comparisons between cells using Shapely
+        coords=[]
+        if self.Morphology.Shape == 'Rectangle':
+            rectangle_center = self.Position
+            rectangle_size = self.Morphology.Size
+            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y+0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X+0.5*rectangle_size.X,rectangle_center.Y+0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X+0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
+            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
+
+        elif self.Morphology.Shape == 'Ellipse':
+            ellipse_center = self.Position
+            ellipse_size = self.Morphology.Size
+            step = 15
+            for angle in range (0,360,step):
+                angle_radians = (angle/180)*math.pi
+                x = ellipse_center.X + (ellipse_size.X/2)*math.cos(angle_radians)
+                y = ellipse_center.Y + (ellipse_size.Y/2)*math.sin(angle_radians)
+                coords.append([x,y])
+        return coords
 
 class CellList:
     def __init__(self):
@@ -76,7 +117,8 @@ class CellList:
             
     def AddCell(self,Cell):
         self.Cells_List.append(Cell)
-        
+
+
     def Neighbours(self, CellID, MaxNeighbourDistance):
         #Looks for cells that are within a rectangle with height and width of those of the cell of interest
         #(defined by its index in Cells_List) multiplied by MaxNeighbourDistance, centred on the center of the cell of interest.
@@ -99,22 +141,7 @@ class CellList:
         #multiply size of cell by maxneighbourdistance, find all other cells with center within this range
         return NeighbourCells
     
-class Morphology:
-    def __init__(self, Shape, Size, Orientation = 0):
-        self.Shape = Shape
-        self.Size = Size
-        self.Orientation = Orientation
 
-class Format:
-    def __init__(self, FillColour='White', LineColour='Black', LineWidth=1):
-        self.FillColour=FillColour
-        self.LineColour = LineColour
-        self.LineWidth = LineWidth
-
-class Dynamics:
-    def __init__(self, Velocity=[0,0], Force = [0,0]):
-        self.Velocity=Velocity
-        self.Force = Force
 
 
 
