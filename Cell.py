@@ -48,10 +48,11 @@ class CellTypes:
                             NewCell = Cells(
                                 ID = '-'.join((self.Name, position.ID, str(n))),
                                 Type = self.Name,
-                                Position = Position(XY(x_position, y_position)),
+                                Position = Position(XY(x_position, y_position),[]),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
-                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)))
+                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                                Neighbours=[])
                             NewCell.Position.Vertices = NewCell.GetCellCoords()       
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
@@ -66,10 +67,11 @@ class CellTypes:
                     NewCell=Cells(
                         ID = '-'.join((self.Name,position.ID,str(n))),
                         Type = self.Name,
-                        Position = Position(XY(x_position, y_position)),
+                        Position = Position(XY(x_position, y_position),[]),
                         Morphology = position.Morphology,
                         Format = self.Format,
-                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)))
+                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                        Neighbours=[])
                     NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
             else:
@@ -78,10 +80,11 @@ class CellTypes:
                 NewCell = Cells(
                     ID = '-'.join((self.Name,position.ID)),
                     Type = self.Name,
-                    Position = Position(XY(x_position, y_position)),
+                    Position = Position(XY(x_position, y_position),[]),
                     Morphology = position.Morphology,
                     Format = self.Format,
-                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)))
+                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                    Neighbours=[])
                 NewCell.Position.Vertices = NewCell.GetCellCoords()
                 OutputCellList.append(NewCell)
         return OutputCellList
@@ -104,7 +107,7 @@ class StartingPosition:
         self.Density = kwargs.get('Density',None)
 
 class Position:
-    def __init__(self, Position, Vertices=[], Orientation = 0):
+    def __init__(self, Position, Vertices, Orientation = 0):
         self.Position = Position
         self.Vertices = Vertices
         self.Orientation = Orientation
@@ -126,14 +129,14 @@ class Dynamics:
         self.Force = Force
 
 class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics):
+    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics,Neighbours):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #Class containing information about cells position, orientation. Also stores coords of vertices.
         self.Morphology = Morphology #class containing information about cells shape and size
         self.Format = Format #class containing information about the cells fill and line colour
         self.Dynamics = Dynamics #class containing information about cell speed and forces applied
-        #self.Neighbours = Neighbours #list of XY coordinates of nearby cells 
+        self.Neighbours = Neighbours #list of XY coordinates of nearby cells 
 
     def __getitem__(self,index):
         return getattr(self,index)
@@ -177,7 +180,7 @@ class Cells:
     def SetPosition(self,X,Y):
         self.Position.Position.X = X
         self.Position.Position.Y = Y
-        self.position.Coords = self.GetCellCoords()
+        self.Position.Vertices = self.GetCellCoords()
         if self.Morphology.Shape == 'Rectangle':
             self.artist.xy = [self.Position.Position.X-self.Morphology.Size.X/2,self.Position.Position.Y-self.Morphology.Size.Y/2]
         elif self.Morphology.Shape == 'Ellipse':
@@ -205,6 +208,10 @@ class Cells:
                 y = ellipse_center.Y + (ellipse_size.Y/2)*math.sin(angle_radians)
                 coords.append([x,y])
         return coords
+    
+    def interact (self):
+        #simulate interactions with neighbouring cells
+        pass
 
 class CellList:
     def __init__(self):
@@ -222,23 +229,23 @@ class CellList:
         self.Cells_List.append(Cell)
 
 
-    def Neighbours(self, CellID, MaxNeighbourDistance):
+    def UpdateNodeNetwork(self, CellID, MaxNeighbourDistance):
         #Uses same algorithm as GetNodeNetwork to find neighbours of a single cell
         #Mostly replaced by GetNodeNetwork
-
-        NeighbourCells=[]
-        CellPolygon = shapely.Polygon(self.Cells_list[CellID].Position.Vertices).buffer(MaxNeighbourDistance)
-
+        
+        self.Cells_List[CellID].Neighbours.clear()
+        CellPolygon = shapely.Polygon(self.Cells_List[CellID].Position.Vertices).buffer(MaxNeighbourDistance)
         for n,cell in enumerate(self.Cells_List):
             TestCellPolygon = shapely.Polygon(cell.Position.Vertices)
             Test = CellPolygon.intersection(TestCellPolygon)   
             if (Test.is_empty==False):
-                if n!= CellID: NeighbourCells.append(n)
-        return NeighbourCells
+                if n!= CellID: self.Cells_List[CellID].Neighbours.append([n,shapely.distance(CellPolygon,TestCellPolygon)])
+        
+
     
     def GetNodeNetwork(self,MaxNeighbourDistance):
         #Node network is a list of lists of length number of cells
-        NodeNetwork = [[] for _ in range(len(self.Cells_List))]
+        #NodeNetwork = [[] for _ in range(len(self.Cells_List))]
 
         for n, cell in enumerate(self.Cells_List):
             #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
@@ -251,14 +258,15 @@ class CellList:
 
                 #Create polygon containing intersection between the region around cell of interest and test cell
                 Test = CellPolygon.buffer(MaxNeighbourDistance).intersection(TestCellPolygon)
-
+                
                 #if polygon contains points, the regions intesersect; add each cell to the other cells network.
                 if (Test.is_empty==False):
-                    NodeNetwork[n].append(i)
-                    NodeNetwork[i].append(n)
+                    cell.Neighbours.append([i,shapely.distance(CellPolygon,TestCellPolygon)])
+                    self.Cells_List[i].Neighbours.append([n,shapely.distance(CellPolygon,TestCellPolygon)])
 
 
-        return NodeNetwork
+
+    
     
 
 
