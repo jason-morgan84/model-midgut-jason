@@ -164,15 +164,20 @@ class Cells:
         
     def UpdatePosition(self,XChange,YChange):
         self.Position.Position.X += XChange
+        for coord in self.Position.Vertices:
+            coord[0] += XChange
+            coord[1] += YChange
         self.Position.Position.Y += YChange
         if self.Morphology.Shape == 'Rectangle':
             self.artist.xy = [self.Position.Position.X-self.Morphology.Size.X/2,self.Position.Position.Y-self.Morphology.Size.Y/2]
         elif self.Morphology.Shape == 'Ellipse':
             self.artist.center = self.Position.Position.AsList()
 
+
     def SetPosition(self,X,Y):
         self.Position.Position.X = X
         self.Position.Position.Y = Y
+        self.position.Coords = self.GetCellCoords()
         if self.Morphology.Shape == 'Rectangle':
             self.artist.xy = [self.Position.Position.X-self.Morphology.Size.X/2,self.Position.Position.Y-self.Morphology.Size.Y/2]
         elif self.Morphology.Shape == 'Ellipse':
@@ -222,12 +227,10 @@ class CellList:
         #Mostly replaced by GetNodeNetwork
 
         NeighbourCells=[]
-        CellCoords = self.Cells_List[CellID].GetCellCoords()
-        CellPolygon = shapely.Polygon(CellCoords).buffer(MaxNeighbourDistance)
+        CellPolygon = shapely.Polygon(self.Cells_list[CellID].Position.Vertices).buffer(MaxNeighbourDistance)
 
         for n,cell in enumerate(self.Cells_List):
-            TestCellCoords = cell.GetCellCoords()
-            TestCellPolygon = shapely.Polygon(TestCellCoords)
+            TestCellPolygon = shapely.Polygon(cell.Position.Vertices)
             Test = CellPolygon.intersection(TestCellPolygon)   
             if (Test.is_empty==False):
                 if n!= CellID: NeighbourCells.append(n)
@@ -240,13 +243,11 @@ class CellList:
         for n, cell in enumerate(self.Cells_List):
             #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
             #generate Shapely.Polygon for current cell (only once)
-            CellCoords = cell.GetCellCoords()
-            CellPolygon = shapely.Polygon(CellCoords)
+            CellPolygon = shapely.Polygon(cell.Position.Vertices)
 
             for i in range(n+1,len(self.Cells_List),1):
                 #generate Shapely.Polygon for test cell
-                TestCellCoords = self.Cells_List[i].GetCellCoords()
-                TestCellPolygon = shapely.Polygon(TestCellCoords)
+                TestCellPolygon = shapely.Polygon(self.Cells_List[i].Position.Vertices)
 
                 #Create polygon containing intersection between the region around cell of interest and test cell
                 Test = CellPolygon.buffer(MaxNeighbourDistance).intersection(TestCellPolygon)

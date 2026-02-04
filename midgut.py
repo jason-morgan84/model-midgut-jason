@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 import math as math
 from matplotlib.backend_bases import MouseButton
 import Cell
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 #Each cell is defined using it's shape (currently, ellipse or rectangle), its center point (using XY class) and 
 #its size (using XY class - full width and height, not radius). 
@@ -21,7 +22,6 @@ import Cell
 #TO DO:
 
 #1: Add movement and collision detection
-############1.2: Change Update cell.Position to Update coords of polygon points
 ############1.4: Consider adding to getnodes function to get distance to each of the closest cells (ideally in x/y components)
 ############1.5: Add collision detection with closest cells only
 ##########################1.5.1: For testing: Make collision propogate speed through cells
@@ -57,10 +57,11 @@ RealTime = True
 #define plot and axes
 figure, axes = plt.subplots()
 axes.set_aspect( 1 )
-#axes.set_axis_off()
+axes.set_axis_off()
 plt.xlim(0, 40)
 plt.ylim(0, 20)
 plt.title( 'Drosophila Embryonic Midgut' )
+
 
 OverallCellTypes=[]
 
@@ -174,6 +175,23 @@ def onpick1(event):
         for cell in Cells:
             cell.artist.set_edgecolor('black')
 if RealTime == True: figure.canvas.mpl_connect('pick_event', onpick1)
+
+#add legend
+LegendPatches=[]
+for cell in OverallCellTypes:
+    LegendPatches.append(mpatches.Patch(color=cell.Format.FillColour, label=cell.Name))
+plt.legend(handles=LegendPatches, bbox_to_anchor=(1, 1.25))
+
+scalebar = AnchoredSizeBar(axes.transData,
+                           10*scale, str(scale*10) +'um', 'lower right', 
+                           color='black',
+                           frameon=False,
+                           size_vertical=1,
+                           bbox_to_anchor=(0.5, 1))
+
+axes.add_artist(scalebar)
+
+
 
 plt.show()
 
