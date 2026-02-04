@@ -25,6 +25,59 @@ class CellTypes:
         self.StartingPosition = StartingPosition
         self.Format=Format
 
+    def Initialise(self):
+        OutputCellList=[]
+        for position in self.StartingPosition:
+            if position.Arrange == 'Pack':
+                if position.Density != 0:
+                    #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
+                    #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
+                    MaxCellsRow = int((abs(position.DrawLimits.X - position.Position.X)) / (position.Morphology.Size.X/position.Density))
+                    VertDistance = (math.sin(math.pi / 3) * position.Morphology.Size.Y) / position.Density
+                    MaxRows = int((abs(position.DrawLimits.Y - position.Position.Y)) / VertDistance)
+                    n = 0
+                    for y in range(MaxRows):
+                        y_position = position.Position.Y + y * VertDistance
+                        for x in range(MaxCellsRow):
+                            n = n + 1
+                            if (y % 2 == 0):
+                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density)
+                            else:
+                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density) + position.Morphology.Size.X / 2
+                            OutputCellList.append(Cells(
+                                ID = '-'.join((self.Name, position.ID, str(n))),
+                                Type = self.Name,
+                                Position = XY(x_position, y_position),
+                                Morphology = position.Morphology,
+                                Format = self.Format,
+                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0))))
+            elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
+                for n in range(position.Number):
+                    if position.Arrange == 'XAlign':
+                        x_position = position.Position.X + position.Morphology.Size.X * n
+                        y_position = position.Position.Y
+                    elif position.Arrange == 'YAlign':
+                        x_position = position.Position.X
+                        y_position = position.Position.Y + position.Morphology.Size.Y * n                        
+                    OutputCellList.append(Cells(
+                        ID = '-'.join((self.Name,position.ID,str(n))),
+                        Type = self.Name,
+                        Position = XY(float(x_position), float(y_position)),
+                        Morphology = position.Morphology,
+                        Format = self.Format,
+                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0))))
+            else:
+                x_position = position.Position.X
+                y_position = position.Position.Y
+                OutputCellList.append(Cells(
+                    ID = '-'.join((self.Name,position.ID)),
+                    Type = self.Name,
+                    Position = XY(float(x_position), float(y_position)),
+                    Morphology = position.Morphology,
+                    Format = self.Format,
+                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0))))
+        return OutputCellList
+
 class StartingPosition:
     #removed for kwargs
     def __init__(self, ID, Position, Morphology, **kwargs):

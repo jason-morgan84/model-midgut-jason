@@ -18,9 +18,7 @@ import Cell
 #A list of cells neighbouring each cell can be generated using CellList.GetNodeNetwork
 
 
-
 #TO DO:
-
 
 #1: Add movement and collision detection
 ############1.2: Change cell.Position to include coords of polygon points
@@ -34,15 +32,11 @@ import Cell
 #2: Add adhesion
 ############2.1: Add movement to PMECs
 #3: Add legend of cell types
-#4: Move cell initialisation into a relevant class
-############4.1: Create new class for lists of cell types
-############4.2: Move cell initialisation into this class
-############4.3: reorder definitions - cell types first (with empty arrays for starting locations) then starting locations
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
-############5.3: Custome packing for variably sized rectangles
+############5.3: Custom packing for variably sized rectangles
 
 
 
@@ -56,110 +50,59 @@ plt.xlim(0, 40)
 plt.ylim(0, 20)
 plt.title( 'Drosophila Embryonic Midgut' )
 
-
-#define starting positions
-VMStartingPositions=[]
-VMStartingPositions.append(Cell.StartingPosition(
-    ID = "UpperVM",
-    Position = Cell.XY(1,13.5),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-    Arrange = "XAlign",
-    Number = 20))
-VMStartingPositions.append(Cell.StartingPosition(
-    ID = "LowerVM",
-    Position = Cell.XY(1,3),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-    Arrange = "XAlign",
-    Number = 20))
-
-PMECStartingPositions=[]
-PMECStartingPositions.append(Cell.StartingPosition(
-    ID = "UpperPMEC",
-    Position = Cell.XY(0.5,12),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
-    Arrange = "XAlign",
-    Number = 10))
-PMECStartingPositions.append(Cell.StartingPosition(
-    ID = "LowerPMEC",
-    Position = Cell.XY(0.5,4.5),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
-    Arrange = "XAlign",
-    Number = 10))
-
-OtherStartingPositions=[]
-OtherStartingPositions.append(Cell.StartingPosition(
-    ID = "Other",
-    Position = Cell.XY(0.75,6.25),
-    Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
-    Arrange = 'Pack',
-    DrawLimits = Cell.XY(11,11.5),
-    Density = 0.8))
-
-#define starting cell types
 OverallCellTypes=[]
-OverallCellTypes.append(Cell.CellTypes(Name = "VM", StartingPosition = VMStartingPositions, Format = Cell.Format(FillColour = 'plum')))
-OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", StartingPosition = PMECStartingPositions, Format = Cell.Format(FillColour = 'powderblue')))
-OverallCellTypes.append(Cell.CellTypes(Name = "Other", StartingPosition = OtherStartingPositions, Format = Cell.Format(FillColour = 'palegreen')))
 
+#Define cell types and starting positions
+OverallCellTypes.append(Cell.CellTypes(Name = "VM", Format = Cell.Format(FillColour = 'plum'), 
+                StartingPosition=
+                    [Cell.StartingPosition(
+                        ID = "UpperVM",
+                        Position = Cell.XY(1,13.5),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
+                        Arrange = "XAlign",
+                        Number = 20),
+                    Cell.StartingPosition(
+                        ID = "LowerVM",
+                        Position = Cell.XY(1,3),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
+                        Arrange = "XAlign",
+                        Number = 20)]))
+
+OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillColour = 'powderblue'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "UpperPMEC",
+                        Position = Cell.XY(0.5,12),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
+                        Arrange = "XAlign",
+                        Number = 10),
+                    Cell.StartingPosition(
+                        ID = "LowerPMEC",
+                        Position = Cell.XY(0.5,4.5),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
+                        Arrange = "XAlign",
+                        Number = 10)]))
+
+OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "Other",
+                        Position = Cell.XY(0.75,6.25),
+                        Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
+                        Arrange = 'Pack',
+                        DrawLimits = Cell.XY(11,11.5),
+                        Density = 0.8)]))
+
+#Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
 Cells=Cell.CellList()
-#initialise cells
-for type in OverallCellTypes:
-    print(type)
-    for position in type.StartingPosition:
-            print(position)
-            if position.Arrange == 'Pack':
-                if position.Density != 0:
-                    #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
-                    #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
-                    MaxCellsRow = int((abs(position.DrawLimits.X - position.Position.X)) / (position.Morphology.Size.X/position.Density))
-                    VertDistance = (math.sin(math.pi / 3) * position.Morphology.Size.Y) / position.Density
-                    MaxRows = int((abs(position.DrawLimits.Y - position.Position.Y)) / VertDistance)
-                    n = 0
-                    for y in range(MaxRows):
-                        y_position = position.Position.Y + y * VertDistance
-                        for x in range(MaxCellsRow):
-                            n = n + 1
-                            if (y % 2 == 0):
-                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density)
-                            else:
-                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density) + position.Morphology.Size.X / 2
-                            Cells.AddCell(Cell.Cells(
-                                ID = '-'.join((type.Name, position.ID, str(n))),
-                                Type = type.Name,
-                                Position = Cell.XY(x_position, y_position),
-                                Morphology = position.Morphology,
-                                Format = type.Format,
-                                Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
-            elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
-                print("Hello")
-                for n in range(position.Number):
-                    if position.Arrange == 'XAlign':
-                        x_position = position.Position.X + position.Morphology.Size.X * n
-                        y_position = position.Position.Y
-                    elif position.Arrange == 'YAlign':
-                        x_position = position.Position.X
-                        y_position = position.Position.Y + position.Morphology.Size.Y * n                        
-                    Cells.AddCell(Cell.Cells(
-                        ID = '-'.join((type.Name,position.ID,str(n))),
-                        Type = type.Name,
-                        Position = Cell.XY(float(x_position), float(y_position)),
-                        Morphology = position.Morphology,
-                        Format = type.Format,
-                        Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
-            else:
-                x_position = position.Position.X
-                y_position = position.Position.Y
-                Cells.AddCell(Cell.Cells(
-                    ID = '-'.join((type.Name,position.ID)),
-                    Type = type.Name,
-                    Position = Cell.XY(float(x_position), float(y_position)),
-                    Morphology = position.Morphology,
-                    Format = type.Format,
-                    Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
 
+#for each cell type, intialise starting positions of those cells and add cells to Cells variable
+for type in OverallCellTypes:
+    for EachCell in type.Initialise():
+        Cells.AddCell(EachCell)
 
 for cell in Cells:
-    #define velocity of cell
+    #define velocity of cell - present for testing purposes only, wouldn't go here in the end
     #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
 
     #draw cell
@@ -186,9 +129,6 @@ def animate(i):
 ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
 
 
-""" def on_click(event):
-    if event.button is MouseButton.LEFT:
-        print(f'data coords {event.xdata} {event.ydata}') """
 
 def onpick1(event):
 
@@ -221,5 +161,8 @@ plt.show()
 
     
 
-
+#re-included if click is needed
+""" def on_click(event):
+    if event.button is MouseButton.LEFT:
+        print(f'data coords {event.xdata} {event.ydata}') """
 
