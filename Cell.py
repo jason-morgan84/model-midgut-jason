@@ -2,6 +2,7 @@ import matplotlib.patches as mpatches
 import shapely.geometry as sg
 import math
 import shapely
+import time
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -229,9 +230,9 @@ class CellList:
         self.Cells_List.append(Cell)
 
 
-    def UpdateNodeNetwork(self, CellID, MaxNeighbourDistance):
+    def UpdateNeighbours(self, CellID, MaxNeighbourDistance):
         #Uses same algorithm as GetNodeNetwork to find neighbours of a single cell
-        #Mostly replaced by GetNodeNetwork
+        #Mostly replaced by UpdateNodeNetwork
         
         self.Cells_List[CellID].Neighbours.clear()
         CellPolygon = shapely.Polygon(self.Cells_List[CellID].Position.Vertices).buffer(MaxNeighbourDistance)
@@ -241,12 +242,13 @@ class CellList:
             if (Test.is_empty==False):
                 if n!= CellID: self.Cells_List[CellID].Neighbours.append([n,shapely.distance(CellPolygon,TestCellPolygon)])
         
-
-    
-    def GetNodeNetwork(self,MaxNeighbourDistance):
-        #Node network is a list of lists of length number of cells
-        #NodeNetwork = [[] for _ in range(len(self.Cells_List))]
-
+    def GenerateNodeNetwork(self,MaxNeighbourDistance):
+        #For each cell in Cells_List, generates a list of the neighbour cells (given MaxNeighbourDistance) and the distance to each
+        #of those neighbours.
+        # 
+        #Data is stored in Cell class in Neihbours as a list of 2D arrays
+        #Neighbours[0] gives the index of a Neighbour cell in Cells_List 
+        #Neighbours[1] gives the distance of that cell
         for n, cell in enumerate(self.Cells_List):
             #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
             #generate Shapely.Polygon for current cell (only once)
@@ -257,12 +259,40 @@ class CellList:
                 TestCellPolygon = shapely.Polygon(self.Cells_List[i].Position.Vertices)
 
                 #Create polygon containing intersection between the region around cell of interest and test cell
-                Test = CellPolygon.buffer(MaxNeighbourDistance).intersection(TestCellPolygon)
-                
+                Distance = shapely.distance(CellPolygon,TestCellPolygon)
                 #if polygon contains points, the regions intesersect; add each cell to the other cells network.
-                if (Test.is_empty==False):
-                    cell.Neighbours.append([i,shapely.distance(CellPolygon,TestCellPolygon)])
-                    self.Cells_List[i].Neighbours.append([n,shapely.distance(CellPolygon,TestCellPolygon)])
+                if (Distance < MaxNeighbourDistance):
+                    cell.Neighbours.append([i,Distance])
+                    self.Cells_List[i].Neighbours.append([n,Distance])
+
+    def UpdateNodeNetwork(self, MaxNeighbourDistance):
+        #Requires node network to already be generated (using CellList.GenerateNodeNetwork())
+        #similar algorithm to GenerateNodeNetwork, but improves efficiency by only looking for neighbours (~ 30x faster)
+        #amongst previous neighbours and neighbours of neighbours. If you're expecting the cell to have moved past 
+        #two cells since you last generated the node network, use GenerateNodeNetwork
+        for n, cell in enumerate(self.Cells_List):
+            cell.Neighbours.clear()
+            #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
+            #generate Shapely.Polygon for current cell (only once)
+            CellPolygon = shapely.Polygon(cell.Position.Vertices)
+            NeighboursOfNeighbours=set()
+            for item in cell.Neighbours:
+                NeighboursOfNeighbours.add(item[0])
+                for neighbour in self[item].Neighbours:
+                    NeighboursOfNeighbours.add(neighbour[0])
+
+            for neighbour in NeighboursOfNeighbours:
+                if neighbour > n:
+                #generate Shapely.Polygon for test cell
+                    TestCellPolygon = shapely.Polygon(self.Cells_List[neighbour].Position.Vertices)
+
+                    #Create polygon containing intersection between the region around cell of interest and test cell
+                    Distance = shapely.distance(CellPolygon,TestCellPolygon)
+                    #if polygon contains points, the regions intesersect; add each cell to the other cells network.
+                    if Distance <= MaxNeighbourDistance:
+                        cell.Neighbours.append([neighbour,Distance])
+                        self.Cells_List[neighbour].Neighbours.append([n,Distance])
+        
 
 
 

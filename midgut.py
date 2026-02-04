@@ -20,8 +20,7 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 #TO DO:
 
-#1: Add movement and collision detection
-############1.4: Consider adding to getnodes function to get distance to each of the closest cells (ideally in x/y components)
+#1: Add collision detection
 ############1.5: Add collision detection with closest cells only
 ##########################1.5.1: For testing: Make collision propogate speed through cells
 ############1.6: Look up potential property to simply define effects of collision - elasticity?
@@ -114,7 +113,7 @@ for cell in Cells:
     axes.add_artist(cell.Draw())
 
 #get network of neighbouring cells
-Cells.GetNodeNetwork(1)
+Cells.GenerateNodeNetwork(1)
 #add timer
 time = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='right')
 
@@ -140,6 +139,7 @@ while x == 0:
 def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
+    Cells.UpdateNodeNetwork(1)
     for n,cell in enumerate(Cells):
         #only append cell to artists list if it has forces applied to it or speed that would require redrawing
         if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
@@ -148,11 +148,11 @@ def Simulate(i):
             #This may well be slower than updating all nodes with enough movement.
             Update_List=set()
             [Update_List.add(item[0]) for item in cell.Neighbours]
-            Cells.UpdateNodeNetwork(n,1)
+            Cells.UpdateNeighbours(n,1)
             [Update_List.add(item[0]) for item in cell.Neighbours]
-            [Cells.UpdateNodeNetwork(item,1) for item in Update_List]
+            [Cells.UpdateNeighbours(item,1) for item in Update_List]
             cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
-            if RealTime == True: ArtistList.append(cell.artist)
+        if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
 
