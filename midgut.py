@@ -18,14 +18,10 @@ import Cell
 #A list of cells neighbouring each cell can be generated using CellList.GetNodeNetwork
 
 
-
 #TO DO:
 
-
 #1: Add movement and collision detection
-############1.2: Change cell.Position to include coords of polygon points
-############1.3: Add function to update all associated positions with movement
-##########################1.3.1 Consider whether all storage positions are required
+############1.2: Change Update cell.Position to Update coords of polygon points
 ############1.4: Consider adding to getnodes function to get distance to each of the closest cells (ideally in x/y components)
 ############1.5: Add collision detection with closest cells only
 ##########################1.5.1: For testing: Make collision propogate speed through cells
@@ -34,18 +30,28 @@ import Cell
 #2: Add adhesion
 ############2.1: Add movement to PMECs
 #3: Add legend of cell types
-#4: Move cell initialisation into a relevant class
-############4.1: Create new class for lists of cell types
-############4.2: Move cell initialisation into this class
-############4.3: reorder definitions - cell types first (with empty arrays for starting locations) then starting locations
+############3.1: Add scale bar
+############3.2: Add time bar
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
-############5.3: Custome packing for variably sized rectangles
+############5.3: Custom packing for variably sized rectangles
+#6: Consider whether all storage positions are required
 
 
+#define simulation details
+#scale variable defines size of 1 unit in um
+scale = 1
 
+#tick length gives length of single tick in seconds
+TickLength = 5
+
+#length of simulation in ticks
+TickNumber = 100
+
+#whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
+RealTime = True
 
 
 #define plot and axes
@@ -56,142 +62,103 @@ plt.xlim(0, 40)
 plt.ylim(0, 20)
 plt.title( 'Drosophila Embryonic Midgut' )
 
-
-#define starting positions
-VMStartingPositions=[]
-VMStartingPositions.append(Cell.StartingPosition(
-    ID = "UpperVM",
-    Position = Cell.XY(1,13.5),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-    Arrange = "XAlign",
-    Number = 20))
-VMStartingPositions.append(Cell.StartingPosition(
-    ID = "LowerVM",
-    Position = Cell.XY(1,3),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-    Arrange = "XAlign",
-    Number = 20))
-
-PMECStartingPositions=[]
-PMECStartingPositions.append(Cell.StartingPosition(
-    ID = "UpperPMEC",
-    Position = Cell.XY(0.5,12),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
-    Arrange = "XAlign",
-    Number = 10))
-PMECStartingPositions.append(Cell.StartingPosition(
-    ID = "LowerPMEC",
-    Position = Cell.XY(0.5,4.5),
-    Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
-    Arrange = "XAlign",
-    Number = 10))
-
-OtherStartingPositions=[]
-OtherStartingPositions.append(Cell.StartingPosition(
-    ID = "Other",
-    Position = Cell.XY(0.75,6.25),
-    Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
-    Arrange = 'Pack',
-    DrawLimits = Cell.XY(11,11.5),
-    Density = 0.8))
-
-#define starting cell types
 OverallCellTypes=[]
-OverallCellTypes.append(Cell.CellTypes(Name = "VM", StartingPosition = VMStartingPositions, Format = Cell.Format(FillColour = 'plum')))
-OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", StartingPosition = PMECStartingPositions, Format = Cell.Format(FillColour = 'powderblue')))
-OverallCellTypes.append(Cell.CellTypes(Name = "Other", StartingPosition = OtherStartingPositions, Format = Cell.Format(FillColour = 'palegreen')))
 
+#Define cell types and starting positions
+OverallCellTypes.append(Cell.CellTypes(Name = "VM", Format = Cell.Format(FillColour = 'plum'), 
+                StartingPosition=
+                    [Cell.StartingPosition(
+                        ID = "UpperVM",
+                        Position = Cell.XY(1,13.5),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
+                        Arrange = "XAlign",
+                        Number = 20),
+                    Cell.StartingPosition(
+                        ID = "LowerVM",
+                        Position = Cell.XY(1,3),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
+                        Arrange = "XAlign",
+                        Number = 20)]))
+
+OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillColour = 'powderblue'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "UpperPMEC",
+                        Position = Cell.XY(0.5,12),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
+                        Arrange = "XAlign",
+                        Number = 10),
+                    Cell.StartingPosition(
+                        ID = "LowerPMEC",
+                        Position = Cell.XY(0.5,4.5),
+                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
+                        Arrange = "XAlign",
+                        Number = 10)]))
+
+OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "Other",
+                        Position = Cell.XY(0.75,6.25),
+                        Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
+                        Arrange = 'Pack',
+                        DrawLimits = Cell.XY(11,11.5),
+                        Density = 0.8)]))
+
+#Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
 Cells=Cell.CellList()
-#initialise cells
-for type in OverallCellTypes:
-    print(type)
-    for position in type.StartingPosition:
-            print(position)
-            if position.Arrange == 'Pack':
-                if position.Density != 0:
-                    #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
-                    #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
-                    MaxCellsRow = int((abs(position.DrawLimits.X - position.Position.X)) / (position.Morphology.Size.X/position.Density))
-                    VertDistance = (math.sin(math.pi / 3) * position.Morphology.Size.Y) / position.Density
-                    MaxRows = int((abs(position.DrawLimits.Y - position.Position.Y)) / VertDistance)
-                    n = 0
-                    for y in range(MaxRows):
-                        y_position = position.Position.Y + y * VertDistance
-                        for x in range(MaxCellsRow):
-                            n = n + 1
-                            if (y % 2 == 0):
-                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density)
-                            else:
-                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density) + position.Morphology.Size.X / 2
-                            Cells.AddCell(Cell.Cells(
-                                ID = '-'.join((type.Name, position.ID, str(n))),
-                                Type = type.Name,
-                                Position = Cell.XY(x_position, y_position),
-                                Morphology = position.Morphology,
-                                Format = type.Format,
-                                Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
-            elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
-                print("Hello")
-                for n in range(position.Number):
-                    if position.Arrange == 'XAlign':
-                        x_position = position.Position.X + position.Morphology.Size.X * n
-                        y_position = position.Position.Y
-                    elif position.Arrange == 'YAlign':
-                        x_position = position.Position.X
-                        y_position = position.Position.Y + position.Morphology.Size.Y * n                        
-                    Cells.AddCell(Cell.Cells(
-                        ID = '-'.join((type.Name,position.ID,str(n))),
-                        Type = type.Name,
-                        Position = Cell.XY(float(x_position), float(y_position)),
-                        Morphology = position.Morphology,
-                        Format = type.Format,
-                        Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
-            else:
-                x_position = position.Position.X
-                y_position = position.Position.Y
-                Cells.AddCell(Cell.Cells(
-                    ID = '-'.join((type.Name,position.ID)),
-                    Type = type.Name,
-                    Position = Cell.XY(float(x_position), float(y_position)),
-                    Morphology = position.Morphology,
-                    Format = type.Format,
-                    Dynamics = Cell.Dynamics(Velocity = Cell.XY(0,0), Force = Cell.XY(0,0))))
 
+#for each cell type, intialise starting positions of those cells and add cells to Cells variable
+for type in OverallCellTypes:
+    for EachCell in type.Initialise():
+        Cells.AddCell(EachCell)
 
 for cell in Cells:
-    #define velocity of cell
-    #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
+    #define velocity of cell - present for testing purposes only, wouldn't go here in the end
+    if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
 
-    #draw cell
+    #add each cell to axis
     axes.add_artist(cell.Draw())
 
 Nodes=Cells.GetNodeNetwork(1)
 
-# Animation function
-def animate(i):
+#Simulation function - defines what to do on each tick of the simulation
+#If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
+def Simulate(i):
     ArtistList=[]
-    #if (i % 20==0): 
-    Nodes=Cells.GetNodeNetwork(1)
+    OutputPositions=[]
     for cell in Cells:
-        cell.Position.X += cell.Dynamics.Velocity.X
-        cell.Position.Y += cell.Dynamics.Velocity.Y
-        if cell.Morphology.Shape == 'Rectangle':
-            cell.artist.xy = [cell.Position.X-cell.Morphology.Size.X/2,cell.Position.Y-cell.Morphology.Size.Y/2]
-        elif cell.Morphology.Shape == 'Ellipse':
-            cell.artist.center = cell.Position.AsList()
-      
-        ArtistList.append(cell.artist)
+        #only append cell to artists list if it has forces applied to it or speed that would require redrawing
+        if cell.Dynamics.Velocity.AsList != [0,0] and cell.Dynamics.Force.AsList != [0,0]:
+            cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
+            if RealTime == True: ArtistList.append(cell.artist)
+        if RealTime == False:
+            OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
+    return tuple(ArtistList) if RealTime == True else OutputPositions
+
+#Replay function - if not being run in real time, goes through each saved position and moves cells accordingly
+def Replay(i):
+    ArtistList=[]
+    for n, CellPosition in enumerate(RecordedPositions[i]):
+        Cells[n].SetPosition(CellPosition[0],CellPosition[1])
+        ArtistList.append(Cells[n].artist)
     return tuple(ArtistList)
 
-ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
+#If running in real time, runs simulation and updates output plots
+#If not running in real time, runs the simulation through and saves position of each cell at each tick, the draws animation based
+#on this saved data
+if RealTime == True:
+    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=10, blit=True,repeat=False)
+elif RealTime == False:
+    RecordedPositions=[]
+    for tick in range(TickNumber):
+        NewPosition = Simulate(tick)
+        RecordedPositions.append(NewPosition)
+    ani = animation.FuncAnimation(figure, Replay, frames=TickNumber, interval=10, blit=True, repeat=False)
+    
 
-
-""" def on_click(event):
-    if event.button is MouseButton.LEFT:
-        print(f'data coords {event.xdata} {event.ydata}') """
-
+#what to do on mouse click - only works when running in real time
 def onpick1(event):
-
     if isinstance(event.artist, mpatches.Rectangle) or isinstance(event.artist, mpatches.Ellipse):
         for cell in Cells:
             cell.artist.set_edgecolor('black')
@@ -206,11 +173,7 @@ def onpick1(event):
         print("Reset")
         for cell in Cells:
             cell.artist.set_edgecolor('black')
-
-
-#plt.connect('button_press_event', on_click)
-
-figure.canvas.mpl_connect('pick_event', onpick1)
+if RealTime == True: figure.canvas.mpl_connect('pick_event', onpick1)
 
 plt.show()
 
@@ -221,5 +184,9 @@ plt.show()
 
     
 
+#re-included if click is needed
+""" def on_click(event):
+    if event.button is MouseButton.LEFT:
+        print(f'data coords {event.xdata} {event.ydata}') """
 
-
+#plt.connect('button_press_event', on_click)
