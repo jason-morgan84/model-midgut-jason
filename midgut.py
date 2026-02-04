@@ -94,7 +94,7 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                         Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
                         Arrange = 'Pack',
                         DrawLimits = Cell.XY(11,11.5),
-                        Density = 0.8)]))
+                        Density = 0.85)]))
 
 #####################################Initialisation#####################################
 #define plot and axes

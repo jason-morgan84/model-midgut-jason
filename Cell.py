@@ -34,12 +34,14 @@ class CellTypes:
                 if position.Density != 0:
                     #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
                     #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
-                    MaxCellsRow = int((abs(position.DrawLimits.X - position.Position.X)) / (position.Morphology.Size.X/position.Density))
+                    WdithToFill = (abs(position.DrawLimits.X - position.Position.X))
+                    HeightToFill = (abs(position.DrawLimits.Y - position.Position.Y))
+                    MaxCellsRow = int(WdithToFill / (position.Morphology.Size.X/position.Density))
                     VertDistance = (math.sin(math.pi / 3) * position.Morphology.Size.Y) / position.Density
-                    MaxRows = int((abs(position.DrawLimits.Y - position.Position.Y)) / VertDistance)
+                    MaxRows = int(HeightToFill / VertDistance)
                     n = 0
                     for y in range(MaxRows):
-                        y_position = position.Position.Y + y * VertDistance
+                        y_position = position.Position.Y + y * VertDistance + (HeightToFill-MaxRows*VertDistance)/2
                         for x in range(MaxCellsRow):
                             n = n + 1
                             if (y % 2 == 0):
