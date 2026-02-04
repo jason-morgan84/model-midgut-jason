@@ -21,9 +21,7 @@ import Cell
 #TO DO:
 
 #1: Add movement and collision detection
-############1.2: Change cell.Position to include coords of polygon points
-############1.3: Add function to update all associated positions with movement
-##########################1.3.1 Consider whether all storage positions are required
+############1.2: Change Update cell.Position to Update coords of polygon points
 ############1.4: Consider adding to getnodes function to get distance to each of the closest cells (ideally in x/y components)
 ############1.5: Add collision detection with closest cells only
 ##########################1.5.1: For testing: Make collision propogate speed through cells
@@ -32,14 +30,28 @@ import Cell
 #2: Add adhesion
 ############2.1: Add movement to PMECs
 #3: Add legend of cell types
+############3.1: Add scale bar
+############3.2: Add time bar
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
 ############5.3: Custom packing for variably sized rectangles
+#6: Consider whether all storage positions are required
 
 
+#define simulation details
+#scale variable defines size of 1 unit in um
+scale = 1
 
+#tick length gives length of single tick in seconds
+TickLength = 5
+
+#length of simulation in ticks
+TickNumber = 100
+
+#whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
+RealTime = True
 
 
 #define plot and axes
@@ -103,35 +115,50 @@ for type in OverallCellTypes:
 
 for cell in Cells:
     #define velocity of cell - present for testing purposes only, wouldn't go here in the end
-    #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
+    if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
 
-    #draw cell
+    #add each cell to axis
     axes.add_artist(cell.Draw())
 
 Nodes=Cells.GetNodeNetwork(1)
 
-# Animation function
-def animate(i):
+#Simulation function - defines what to do on each tick of the simulation
+#If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
+def Simulate(i):
     ArtistList=[]
-    #if (i % 20==0): 
-    Nodes=Cells.GetNodeNetwork(1)
+    OutputPositions=[]
     for cell in Cells:
-        cell.Position.X += cell.Dynamics.Velocity.X
-        cell.Position.Y += cell.Dynamics.Velocity.Y
-        if cell.Morphology.Shape == 'Rectangle':
-            cell.artist.xy = [cell.Position.X-cell.Morphology.Size.X/2,cell.Position.Y-cell.Morphology.Size.Y/2]
-        elif cell.Morphology.Shape == 'Ellipse':
-            cell.artist.center = cell.Position.AsList()
-      
-        ArtistList.append(cell.artist)
+        #only append cell to artists list if it has forces applied to it or speed that would require redrawing
+        if cell.Dynamics.Velocity.AsList != [0,0] and cell.Dynamics.Force.AsList != [0,0]:
+            cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
+            if RealTime == True: ArtistList.append(cell.artist)
+        if RealTime == False:
+            OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
+    return tuple(ArtistList) if RealTime == True else OutputPositions
+
+#Replay function - if not being run in real time, goes through each saved position and moves cells accordingly
+def Replay(i):
+    ArtistList=[]
+    for n, CellPosition in enumerate(RecordedPositions[i]):
+        Cells[n].SetPosition(CellPosition[0],CellPosition[1])
+        ArtistList.append(Cells[n].artist)
     return tuple(ArtistList)
 
-ani = animation.FuncAnimation(figure, animate, frames=1000, interval=10, blit=True)
+#If running in real time, runs simulation and updates output plots
+#If not running in real time, runs the simulation through and saves position of each cell at each tick, the draws animation based
+#on this saved data
+if RealTime == True:
+    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=10, blit=True,repeat=False)
+elif RealTime == False:
+    RecordedPositions=[]
+    for tick in range(TickNumber):
+        NewPosition = Simulate(tick)
+        RecordedPositions.append(NewPosition)
+    ani = animation.FuncAnimation(figure, Replay, frames=TickNumber, interval=10, blit=True, repeat=False)
+    
 
-
-
+#what to do on mouse click - only works when running in real time
 def onpick1(event):
-
     if isinstance(event.artist, mpatches.Rectangle) or isinstance(event.artist, mpatches.Ellipse):
         for cell in Cells:
             cell.artist.set_edgecolor('black')
@@ -146,11 +173,7 @@ def onpick1(event):
         print("Reset")
         for cell in Cells:
             cell.artist.set_edgecolor('black')
-
-
-#plt.connect('button_press_event', on_click)
-
-figure.canvas.mpl_connect('pick_event', onpick1)
+if RealTime == True: figure.canvas.mpl_connect('pick_event', onpick1)
 
 plt.show()
 
@@ -166,3 +189,4 @@ plt.show()
     if event.button is MouseButton.LEFT:
         print(f'data coords {event.xdata} {event.ydata}') """
 
+#plt.connect('button_press_event', on_click)
