@@ -132,7 +132,7 @@ class Dynamics:
         self.Force = Force
 
 class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics,Neighbours):
+    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Neighbours):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #Class containing information about cells position, orientation. Also stores coords of vertices.
@@ -282,6 +282,8 @@ class CellList:
                 NeighboursOfNeighbours.add(item[0])
                 for neighbour in self[item].Neighbours:
                     NeighboursOfNeighbours.add(neighbour[0])
+            
+            #print(NeighboursOfNeighbours)
 
             for neighbour in NeighboursOfNeighbours:
                 if neighbour > n:
@@ -294,6 +296,17 @@ class CellList:
                     if Distance <= MaxNeighbourDistance:
                         cell.Neighbours.append([neighbour,Distance])
                         self.Cells_List[neighbour].Neighbours.append([n,Distance])
+
+    def Collision(self,CellID):
+
+        for neighbour in self.Cells_List[CellID].Neighbours:
+            MinDistance = self.Cells_List[neighbour[0]].Morphology.Size.X + self.Cells_List[CellID].Morphology.Size.X
+            Distance = math.sqrt((self.Cells_List[neighbour[0]].Position.Position.X - self.Cells_List[CellID].Position.Position.X)**2 + (self.Cells_List[neighbour[0]].Position.Position.Y - self.Cells_List[CellID].Position.Position.Y)**2)
+            print(CellID,neighbour[0],MinDistance,Distance)
+            if Distance <= MinDistance:
+                print("Cell",CellID,"crashed into cell",neighbour[0])
+
+        pass
         
 
 

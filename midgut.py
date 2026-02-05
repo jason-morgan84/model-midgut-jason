@@ -28,7 +28,8 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 #2: Add adhesion
 ############2.1: Add movement to PMECs
 #5: Improvements to cell arrangement and packing density
-############5.1: Custom packing algorithm - allow ellipses
+############5.1: Custom packing algorithm for circles
+##########################5.1.1: Remember, circles are only acting as models for cells - no need for complexity provided by ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
 ############5.3: Custom packing for variably sized rectangles
@@ -44,14 +45,10 @@ scale = 1
 TickLength = 5
 
 #length of simulation in ticks
-TickNumber = 200
+TickNumber = 500
 
 #whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
 RealTime = True
-
-
-
-
 
 #####################################Cell Properties####################################
 #Define cell types and starting positions
@@ -127,8 +124,6 @@ for cell in Cells:
 x=0
 while x == 0:
     random_cell=int(np.random.random()*70)
-    #print(random_cell)
-    #print(Cells[random_cell].Type)
     if Cells[random_cell].Type=='Other':
         Cells[random_cell].Dynamics.Velocity.X = (np.random.random()-0.5)*0.05
         Cells[random_cell].Dynamics.Velocity.Y = (np.random.random()-0.5)*0.05
@@ -139,18 +134,20 @@ while x == 0:
 def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
-    Cells.UpdateNodeNetwork(1)
+    #Cells.UpdateNodeNetwork(1)
     for n,cell in enumerate(Cells):
         #only append cell to artists list if it has forces applied to it or speed that would require redrawing
         if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
+            Cells.Collision(n)
+            #print(cell.Neighbours)
             #Updates neighbours of moving cell, as well as cells that were neighborus of cell of interest
             #both before and after updating the neighbour list.
             #This may well be slower than updating all nodes with enough movement.
-            Update_List=set()
-            [Update_List.add(item[0]) for item in cell.Neighbours]
-            Cells.UpdateNeighbours(n,1)
-            [Update_List.add(item[0]) for item in cell.Neighbours]
-            [Cells.UpdateNeighbours(item,1) for item in Update_List]
+            #Update_List=set()
+            #[Update_List.add(item[0]) for item in cell.Neighbours]
+            #Cells.UpdateNeighbours(n,1)
+            #[Update_List.add(item[0]) for item in cell.Neighbours]
+            #[Cells.UpdateNeighbours(item,1) for item in Update_List]
             cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
@@ -177,7 +174,7 @@ def Replay(i):
 #If not running in real time, runs the simulation through and saves position of each cell at each tick, the draws animation based
 #on this saved data
 if RealTime == True:
-    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=10, blit=True,repeat=False)
+    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=100, blit=True,repeat=False)
 elif RealTime == False:
     RecordedPositions=[]
     for tick in range(TickNumber):
