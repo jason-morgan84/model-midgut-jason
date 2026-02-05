@@ -56,33 +56,19 @@ RealTime = True
 #####################################Cell Properties####################################
 #Define cell types and starting positions
 OverallCellTypes=[]
-OverallCellTypes.append(Cell.CellTypes(Name = "VM", Format = Cell.Format(FillColour = 'plum'), 
-                StartingPosition=
-                    [Cell.StartingPosition(
-                        ID = "UpperVM",
-                        Position = Cell.XY(1,13.5),
-                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-                        Arrange = "XAlign",
-                        Number = 20),
-                    Cell.StartingPosition(
-                        ID = "LowerVM",
-                        Position = Cell.XY(1,3),
-                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(2,1)),
-                        Arrange = "XAlign",
-                        Number = 20)]))
 
 OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillColour = 'powderblue'),
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperPMEC",
-                        Position = Cell.XY(0.5,12),
-                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
+                        Position = Cell.XY(1,13),
+                        Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 10),
                     Cell.StartingPosition(
                         ID = "LowerPMEC",
-                        Position = Cell.XY(0.5,4.5),
-                        Morphology = Cell.Morphology(Shape = 'Rectangle', Size = Cell.XY(1,2)),
+                        Position = Cell.XY(1,2),
+                        Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 10)]))
 
@@ -90,15 +76,20 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Other",
-                        Position = Cell.XY(0.75,6.25),
-                        Morphology = Cell.Morphology(Shape = 'Ellipse', Size = Cell.XY(1.5,1.5)),
+                        Position = Cell.XY(1,4),
+                        Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'Pack',
-                        DrawLimits = Cell.XY(11,11.5),
-                        Density = 0.85)]))
+                        DrawLimits = Cell.XY(21,13),
+                        Density = 0.9)]))
+
+TopBoundary = 14
+LowerBoundary = 1
+Edge = mpatches.Rectangle((-1,0.75),50,13.75,fill = False,edgecolor='Plum',linewidth=5)
 
 #####################################Initialisation#####################################
 #define plot and axes
 figure, axes = plt.subplots()
+axes.add_artist(Edge)
 
 #Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
 Cells=Cell.CellList()
@@ -125,14 +116,14 @@ for cell in Cells:
     #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
     pass
 x=0
-while x == 0:
-    random_cell=int(np.random.random()*70)
+#while x == 0:
+    #random_cell=int(np.random.random()*70)
     #print(random_cell)
     #print(Cells[random_cell].Type)
-    if Cells[random_cell].Type=='Other':
-        Cells[random_cell].Dynamics.Velocity.X = (np.random.random()-0.5)*0.05
-        Cells[random_cell].Dynamics.Velocity.Y = (np.random.random()-0.5)*0.05
-        break
+    #if Cells[random_cell].Type=='Other':
+       # Cells[random_cell].Dynamics.Velocity.X = (np.random.random()-0.5)*0.05
+        #Cells[random_cell].Dynamics.Velocity.Y = (np.random.random()-0.5)*0.05
+        #break
 
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
@@ -197,9 +188,10 @@ def onpick1(event):
             cell.artist.set_edgecolor('black')
         center = Cell.XY(event.artist.get_center()[0],event.artist.get_center()[1])
         for n, cell in enumerate(Cells):
-            if cell.Position.Position.X==center.X and cell.Position.Position.Y==center.Y: 
+            if cell.Position.X==center.X and cell.Position.Y==center.Y: 
                 #cell.Dynamics.Velocity.X = (np.random.random()-0.5)*0.5
                 #cell.Dynamics.Velocity.Y = (np.random.random()-0.5)*0.5
+                print(cell.Neighbours)
                 for item in cell.Neighbours:
                     Cells[item[0]].artist.set_edgecolor('red')     
     else:

@@ -1,7 +1,5 @@
 import matplotlib.patches as mpatches
-import shapely.geometry as sg
 import math
-import shapely
 import time
 
 class XY:
@@ -34,48 +32,48 @@ class CellTypes:
                 if position.Density != 0:
                     #current method only works for circles as test - add in advanced layer algorithm for ellipse packing
                     #Dmitrii N. Ilin & Marc Bernacki, 2016, Advancing layer algorithm of dense ellipse packing for generating statistically equivalent polygonal structures
-                    WdithToFill = (abs(position.DrawLimits.X - position.Position.X))
+                    WidthToFill = (abs(position.DrawLimits.X - position.Position.X))
                     HeightToFill = (abs(position.DrawLimits.Y - position.Position.Y))
-                    MaxCellsRow = int(WdithToFill / (position.Morphology.Size.X/position.Density))
-                    VertDistance = (math.sin(math.pi / 3) * position.Morphology.Size.Y) / position.Density
+                    MaxCellsRow = int(WidthToFill / ((position.Morphology.Radius*2)/position.Density))
+                    VertDistance = (math.sin(math.pi / 3) * position.Morphology.Radius*2) / position.Density
                     MaxRows = int(HeightToFill / VertDistance)
                     n = 0
                     for y in range(MaxRows):
-                        y_position = position.Position.Y + y * VertDistance + (HeightToFill-MaxRows*VertDistance)/2
+                        y_position = position.Position.Y + y * VertDistance + (HeightToFill - MaxRows * VertDistance) / 2
                         for x in range(MaxCellsRow):
                             n = n + 1
                             if (y % 2 == 0):
-                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density)
+                                x_position = position.Position.X + x * (2*position.Morphology.Radius/position.Density)
                             else:
-                                x_position = position.Position.X + x * (position.Morphology.Size.X/position.Density) + position.Morphology.Size.X / 2
+                                x_position = position.Position.X + x * (2*position.Morphology.Radius/position.Density) + position.Morphology.Radius
                             NewCell = Cells(
                                 ID = '-'.join((self.Name, position.ID, str(n))),
                                 Type = self.Name,
-                                Position = Position(XY(x_position, y_position),[]),
+                                Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
                                 Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
                                 Neighbours=[])
-                            NewCell.Position.Vertices = NewCell.GetCellCoords()       
+                            #NewCell.Position.Vertices = NewCell.GetCellCoords()       
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
                 for n in range(position.Number):
                     if position.Arrange == 'XAlign':
-                        x_position = position.Position.X + position.Morphology.Size.X * n
+                        x_position = position.Position.X + 2 * position.Morphology.Radius* n
                         y_position = position.Position.Y
                     elif position.Arrange == 'YAlign':
                         x_position = position.Position.X
-                        y_position = position.Position.Y + position.Morphology.Size.Y * n                        
+                        y_position = position.Position.Y + 2 * position.Morphology.Radius * n                        
 
                     NewCell=Cells(
                         ID = '-'.join((self.Name,position.ID,str(n))),
                         Type = self.Name,
-                        Position = Position(XY(x_position, y_position),[]),
+                        Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
                         Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
                         Neighbours=[])
-                    NewCell.Position.Vertices = NewCell.GetCellCoords()                   
+                    #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
             else:
                 x_position = position.Position.X
@@ -83,7 +81,7 @@ class CellTypes:
                 NewCell = Cells(
                     ID = '-'.join((self.Name,position.ID)),
                     Type = self.Name,
-                    Position = Position(XY(x_position, y_position),[]),
+                    Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
                     Format = self.Format,
                     Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
@@ -109,16 +107,9 @@ class StartingPosition:
         self.DrawLimits = kwargs.get('DrawLimits',None)
         self.Density = kwargs.get('Density',None)
 
-class Position:
-    def __init__(self, Position, Vertices, Orientation = 0):
-        self.Position = Position
-        self.Vertices = Vertices
-        self.Orientation = Orientation
-
 class Morphology:
-    def __init__(self, Shape, Size):
-        self.Shape = Shape
-        self.Size = Size
+    def __init__(self, Radius):
+        self.Radius = Radius
         
 class Format:
     def __init__(self, FillColour='White', LineColour='Black', LineWidth=1):
@@ -145,28 +136,16 @@ class Cells:
         return getattr(self,index)
    
     def Draw(self):
-        if self.Morphology.Shape == "Ellipse":
-            self.artist = mpatches.Ellipse(
-                xy = tuple(self.Position.Position.AsList()),
-                width = self.Morphology.Size.X,
-                height = self.Morphology.Size.Y,
-                fill = True,edgecolor=self.Format.LineColour,
-                facecolor = self.Format.FillColour,
-                picker = True,
-                zorder = 5)
-            return self.artist
+        self.artist = mpatches.Circle(
+            xy = self.Position.AsTuple(),
+            radius = self.Morphology.Radius,
+            fill = True,edgecolor=self.Format.LineColour,
+            facecolor = self.Format.FillColour,
+            picker = True,
+            zorder = 5)
+        return self.artist
         
-        elif self.Morphology.Shape == "Rectangle":
-            self.artist = mpatches.Rectangle(
-                xy = tuple([float(self.Position.Position.X - self.Morphology.Size.X/2), self.Position.Position.Y - self.Morphology.Size.Y / 2]),
-                width = self.Morphology.Size.X,
-                height = self.Morphology.Size.Y,
-                fill = True,
-                edgecolor = self.Format.LineColour,
-                facecolor = self.Format.FillColour,
-                picker = True,
-                zorder = 5)
-            return self.artist
+
         
     def UpdatePosition(self,XChange,YChange):
         self.Position.Position.X += XChange
@@ -188,34 +167,7 @@ class Cells:
             self.artist.xy = [self.Position.Position.X-self.Morphology.Size.X/2,self.Position.Position.Y-self.Morphology.Size.Y/2]
         elif self.Morphology.Shape == 'Ellipse':
             self.artist.center = self.Position.Position.AsList()
-
-    def GetCellCoords(self):
-        #Generates a list of coordinates of rectangle or ellipse shaped cells for use in comparisons between cells using Shapely
-        coords=[]
-        if self.Morphology.Shape == 'Rectangle':
-            rectangle_center = self.Position.Position
-            rectangle_size = self.Morphology.Size
-            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
-            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y+0.5*rectangle_size.Y])
-            coords.append([rectangle_center.X+0.5*rectangle_size.X,rectangle_center.Y+0.5*rectangle_size.Y])
-            coords.append([rectangle_center.X+0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
-            coords.append([rectangle_center.X-0.5*rectangle_size.X,rectangle_center.Y-0.5*rectangle_size.Y])
-
-        elif self.Morphology.Shape == 'Ellipse':
-            ellipse_center = self.Position.Position
-            ellipse_size = self.Morphology.Size
-            step = 15
-            for angle in range (0,360,step):
-                angle_radians = (angle/180)*math.pi
-                x = ellipse_center.X + (ellipse_size.X/2)*math.cos(angle_radians)
-                y = ellipse_center.Y + (ellipse_size.Y/2)*math.sin(angle_radians)
-                coords.append([x,y])
-        return coords
-    
-    def interact (self):
-        #simulate interactions with neighbouring cells
-        pass
-
+  
 class CellList:
     def __init__(self):
         self.Cells_List=[] 
@@ -230,20 +182,7 @@ class CellList:
             
     def AddCell(self,Cell):
         self.Cells_List.append(Cell)
-
-
-    def UpdateNeighbours(self, CellID, MaxNeighbourDistance):
-        #Uses same algorithm as GetNodeNetwork to find neighbours of a single cell
-        #Mostly replaced by UpdateNodeNetwork
-        
-        self.Cells_List[CellID].Neighbours.clear()
-        CellPolygon = shapely.Polygon(self.Cells_List[CellID].Position.Vertices).buffer(MaxNeighbourDistance)
-        for n,cell in enumerate(self.Cells_List):
-            TestCellPolygon = shapely.Polygon(cell.Position.Vertices)
-            Test = CellPolygon.intersection(TestCellPolygon)   
-            if (Test.is_empty==False):
-                if n!= CellID: self.Cells_List[CellID].Neighbours.append([n,shapely.distance(CellPolygon,TestCellPolygon)])
-        
+       
     def GenerateNodeNetwork(self,MaxNeighbourDistance):
         #For each cell in Cells_List, generates a list of the neighbour cells (given MaxNeighbourDistance) and the distance to each
         #of those neighbours.
@@ -253,15 +192,9 @@ class CellList:
         #Neighbours[1] gives the distance of that cell
         for n, cell in enumerate(self.Cells_List):
             #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
-            #generate Shapely.Polygon for current cell (only once)
-            CellPolygon = shapely.Polygon(cell.Position.Vertices)
-
             for i in range(n+1,len(self.Cells_List),1):
-                #generate Shapely.Polygon for test cell
-                TestCellPolygon = shapely.Polygon(self.Cells_List[i].Position.Vertices)
-
-                #Create polygon containing intersection between the region around cell of interest and test cell
-                Distance = shapely.distance(CellPolygon,TestCellPolygon)
+                #Calculate distance between cells: distance between centres subtract the two radiuseses
+                Distance = math.sqrt((cell.Position.X-self.Cells_List[i].Position.X)**2 + (cell.Position.Y-self.Cells_List[i].Position.Y)**2)-cell.Morphology.Radius - self.Cells_List[i].Morphology.Radius
                 #if polygon contains points, the regions intesersect; add each cell to the other cells network.
                 if (Distance < MaxNeighbourDistance):
                     cell.Neighbours.append([i,Distance])
@@ -274,9 +207,6 @@ class CellList:
         #two cells since you last generated the node network, use GenerateNodeNetwork
         for n, cell in enumerate(self.Cells_List):
             cell.Neighbours.clear()
-            #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
-            #generate Shapely.Polygon for current cell (only once)
-            CellPolygon = shapely.Polygon(cell.Position.Vertices)
             NeighboursOfNeighbours=set()
             for item in cell.Neighbours:
                 NeighboursOfNeighbours.add(item[0])
@@ -285,12 +215,7 @@ class CellList:
 
             for neighbour in NeighboursOfNeighbours:
                 if neighbour > n:
-                #generate Shapely.Polygon for test cell
-                    TestCellPolygon = shapely.Polygon(self.Cells_List[neighbour].Position.Vertices)
-
-                    #Create polygon containing intersection between the region around cell of interest and test cell
-                    Distance = shapely.distance(CellPolygon,TestCellPolygon)
-                    #if polygon contains points, the regions intesersect; add each cell to the other cells network.
+                    Distance = math.sqrt((cell.Position.X-self.Cells_List[neighbour].Position.X)**2 + (cell.Position.Y-self.Cells_List[neighbour].Position.Y)**2)-cell.Morphology.Radius - self.Cells_List[neighbour].Morphology.Radius
                     if Distance <= MaxNeighbourDistance:
                         cell.Neighbours.append([neighbour,Distance])
                         self.Cells_List[neighbour].Neighbours.append([n,Distance])
