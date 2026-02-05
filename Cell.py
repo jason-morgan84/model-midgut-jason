@@ -148,15 +148,10 @@ class Cells:
 
         
     def UpdatePosition(self,XChange,YChange):
-        self.Position.Position.X += XChange
-        for coord in self.Position.Vertices:
-            coord[0] += XChange
-            coord[1] += YChange
-        self.Position.Position.Y += YChange
-        if self.Morphology.Shape == 'Rectangle':
-            self.artist.xy = [self.Position.Position.X-self.Morphology.Size.X/2,self.Position.Position.Y-self.Morphology.Size.Y/2]
-        elif self.Morphology.Shape == 'Ellipse':
-            self.artist.center = self.Position.Position.AsList()
+        self.Position.X += XChange
+        self.Position.Y += YChange
+
+        self.artist.center = self.Position.AsList()
 
 
     def SetPosition(self,X,Y):
@@ -199,28 +194,38 @@ class CellList:
                 if (Distance < MaxNeighbourDistance):
                     cell.Neighbours.append([i,Distance])
                     self.Cells_List[i].Neighbours.append([n,Distance])
+      
+    def Collision(self,CellID):
+        for neighbour in self.Cells_List[CellID].Neighbours:
+            MinDistance = self.Cells_List[neighbour[0]].Morphology.Radius + self.Cells_List[CellID].Morphology.Radius
+            Distance = math.hypot((self.Cells_List[neighbour[0]].Position.X - self.Cells_List[CellID].Position.X+self.Cells_List[CellID].Dynamics.Velocity.X),(self.Cells_List[neighbour[0]].Position.Y - self.Cells_List[CellID].Position.Y+self.Cells_List[CellID].Dynamics.Velocity.Y))
+            #print(CellID,neighbour[0],MinDistance,Distance)
+            if Distance <= MinDistance:
+               # print("Collision between ",CellID,neighbour[0])
+                Cell1Mass = 1
+                Cell2Mass = 1
+                Cell1ScalarSpeed = math.hypot(self.Cells_List[CellID].Dynamics.Velocity.Y,self.Cells_List[CellID].Dynamics.Velocity.X)
+                Cell2ScalarSpeed = math.hypot(self.Cells_List[neighbour[0]].Dynamics.Velocity.Y,self.Cells_List[neighbour[0]].Dynamics.Velocity.X)
+                Cell1MovementAngle = math.atan2(self.Cells_List[CellID].Dynamics.Velocity.Y,self.Cells_List[CellID].Dynamics.Velocity.X)
+                Cell2MovementAngle = math.atan2(self.Cells_List[neighbour[0]].Dynamics.Velocity.Y,self.Cells_List[neighbour[0]].Dynamics.Velocity.X)
+                ContactAngle = Cell1MovementAngle - math.atan2(self.Cells_List[CellID].Position.Y-self.Cells_List[neighbour[0]].Position.Y,self.Cells_List[CellID].Position.X-self.Cells_List[neighbour[0]].Position.X)
+                #math.atan2(self.Cells_List[CellID].Position.X - self.Cells_List[neighbour[0]].Position.X,self.Cells_List[CellID].Position.Y - self.Cells_List[neighbour[0]].Position.Y)
 
-    def UpdateNodeNetwork(self, MaxNeighbourDistance):
-        #Requires node network to already be generated (using CellList.GenerateNodeNetwork())
-        #similar algorithm to GenerateNodeNetwork, but improves efficiency by only looking for neighbours (~ 30x faster)
-        #amongst previous neighbours and neighbours of neighbours. If you're expecting the cell to have moved past 
-        #two cells since you last generated the node network, use GenerateNodeNetwork
-        for n, cell in enumerate(self.Cells_List):
-            cell.Neighbours.clear()
-            NeighboursOfNeighbours=set()
-            for item in cell.Neighbours:
-                NeighboursOfNeighbours.add(item[0])
-                for neighbour in self[item].Neighbours:
-                    NeighboursOfNeighbours.add(neighbour[0])
+                #print(Cell1ScalarSpeed,Cell2ScalarSpeed)
 
-            for neighbour in NeighboursOfNeighbours:
-                if neighbour > n:
-                    Distance = math.sqrt((cell.Position.X-self.Cells_List[neighbour].Position.X)**2 + (cell.Position.Y-self.Cells_List[neighbour].Position.Y)**2)-cell.Morphology.Radius - self.Cells_List[neighbour].Morphology.Radius
-                    if Distance <= MaxNeighbourDistance:
-                        cell.Neighbours.append([neighbour,Distance])
-                        self.Cells_List[neighbour].Neighbours.append([n,Distance])
-        
+                Cell1VelocityX = ((Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle)*(Cell1Mass-Cell2Mass) + 2 * Cell2Mass * Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.cos(ContactAngle) + Cell1ScalarSpeed*math.sin(Cell1MovementAngle-ContactAngle)*math.cos(ContactAngle+math.pi/2)
+                Cell1VelocityY = ((Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle)*(Cell1Mass-Cell2Mass) + 2 * Cell2Mass * Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.sin(ContactAngle) + Cell1ScalarSpeed*math.sin(Cell1MovementAngle-ContactAngle)*math.sin(ContactAngle+math.pi/2)
+                Cell2VelocityX = ((Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle)*(Cell2Mass-Cell1Mass) + 2 * Cell1Mass * Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.cos(ContactAngle) + Cell2ScalarSpeed*math.sin(Cell2MovementAngle-ContactAngle)*math.cos(ContactAngle+math.pi/2)
+                Cell2VelocityY = ((Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle)*(Cell2Mass-Cell1Mass) + 2 * Cell1Mass * Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.sin(ContactAngle) + Cell2ScalarSpeed*math.sin(Cell2MovementAngle-ContactAngle)*math.sin(ContactAngle+math.pi/2)
 
+                #print(Cell1VelocityX,Cell1VelocityY,Cell2VelocityX,Cell2VelocityY)
+                self.Cells_List[CellID].Dynamics.Velocity.X = Cell1VelocityX
+                self.Cells_List[CellID].Dynamics.Velocity.Y = Cell1VelocityY
+
+                self.Cells_List[neighbour[0]].Dynamics.Velocity.X = Cell2VelocityX
+                self.Cells_List[neighbour[0]].Dynamics.Velocity.Y = Cell2VelocityY
+
+                #time.sleep(2.5)
 
 
     

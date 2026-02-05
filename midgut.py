@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 import math as math
 import Cell
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+import time
 
 #Each cell is defined using it's shape (currently, ellipse or rectangle), its center point (using XY class) and 
 #its size (using XY class - full width and height, not radius). 
@@ -20,13 +21,17 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 #TO DO:
 
+#0: Fix neighbours, check everythings working with circles
 #1: Add collision detection
-############1.5: Add collision detection with closest cells only
+############1.2: Add collision detection with closest cells only
 ##########################1.5.1: For testing: Make collision propogate speed through cells
 ############1.6: Look up potential property to simply define effects of collision - elasticity?
 ############1.7: Random movement?
 #2: Add adhesion
 ############2.1: Add movement to PMECs
+############2.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+##########################2.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+#3: Better define edges
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
@@ -44,12 +49,19 @@ scale = 1
 TickLength = 5
 
 #length of simulation in ticks
-TickNumber = 200
+TickNumber = 1000
 
 #whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
 RealTime = True
 
+#Field properties
+#UpperBound=//
+#LowerBound=//
+#LeftBound=//
+#RightBound=//
 
+Elasticity = 1
+Damping = 0.1
 
 
 
@@ -105,51 +117,48 @@ for cell in Cells:
 
 #get network of neighbouring cells
 Cells.GenerateNodeNetwork(1)
+
 #add timer
-time = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='right')
+timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='right')
 
 
 #######################################Simulation#######################################
 #Actions to carry out before simulation
-#define velocity of cell - present for testing purposes only, wouldn't go here in the end
-for cell in Cells:
-    #if cell.Type == "PMEC" or cell.Type == "Other": cell.Dynamics.Velocity.X = 0.1
-    pass
+
 x=0
-#while x == 0:
-    #random_cell=int(np.random.random()*70)
-    #print(random_cell)
-    #print(Cells[random_cell].Type)
-    #if Cells[random_cell].Type=='Other':
-       # Cells[random_cell].Dynamics.Velocity.X = (np.random.random()-0.5)*0.05
-        #Cells[random_cell].Dynamics.Velocity.Y = (np.random.random()-0.5)*0.05
-        #break
+while x == 0:
+    random_cell=int(np.random.random()*40)
+    if Cells[random_cell].Type=='Other':
+        
+        Cells[random_cell].Dynamics.Velocity.X = (np.random.random()-0.5)*0.05
+        Cells[random_cell].Dynamics.Velocity.Y = (np.random.random()-0.5)*0.05
+        break
+        
 
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
+
 def Simulate(i):
+
     ArtistList=[]
     OutputPositions=[]
-    Cells.UpdateNodeNetwork(1)
+
+    Cells.GenerateNodeNetwork(1)
+
+
     for n,cell in enumerate(Cells):
         #only append cell to artists list if it has forces applied to it or speed that would require redrawing
         if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
-            #Updates neighbours of moving cell, as well as cells that were neighborus of cell of interest
-            #both before and after updating the neighbour list.
-            #This may well be slower than updating all nodes with enough movement.
-            Update_List=set()
-            [Update_List.add(item[0]) for item in cell.Neighbours]
-            Cells.UpdateNeighbours(n,1)
-            [Update_List.add(item[0]) for item in cell.Neighbours]
-            [Cells.UpdateNeighbours(item,1) for item in Update_List]
-            cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
+
+                Cells.Collision(n)
+                cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
 
     #update timer
-    time.set_text(str(i*5)+"s")
-    ArtistList.append(time)
+    timer.set_text(str(i*5)+"s")
+    ArtistList.append(timer)
     return tuple(ArtistList) if RealTime == True else OutputPositions
 
 
@@ -191,7 +200,7 @@ def onpick1(event):
             if cell.Position.X==center.X and cell.Position.Y==center.Y: 
                 #cell.Dynamics.Velocity.X = (np.random.random()-0.5)*0.5
                 #cell.Dynamics.Velocity.Y = (np.random.random()-0.5)*0.5
-                print(cell.Neighbours)
+                #print(cell.Neighbours)
                 for item in cell.Neighbours:
                     Cells[item[0]].artist.set_edgecolor('red')     
     else:
