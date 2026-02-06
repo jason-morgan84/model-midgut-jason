@@ -52,7 +52,7 @@ class CellTypes:
                                 Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
-                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                                 Neighbours=[])    
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
@@ -70,7 +70,7 @@ class CellTypes:
                         Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
-                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                         Neighbours=[])
                     #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
@@ -83,7 +83,7 @@ class CellTypes:
                     Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
                     Format = self.Format,
-                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                     Neighbours=[])
                 OutputCellList.append(NewCell)
         return OutputCellList
@@ -116,9 +116,10 @@ class Format:
         self.LineWidth = LineWidth
 
 class Dynamics:
-    def __init__(self, Velocity=[0,0], Force = [0,0]):
+    def __init__(self, Velocity=[0,0], Force = [0,0], AppliedForce=[0,0]):
         self.Velocity=Velocity
         self.Force = Force
+        self.AppliedForce = AppliedForce
 
 class Cells:
     def __init__(self, ID, Type, Position, Morphology, Format, Dynamics,Neighbours):
@@ -261,7 +262,7 @@ class CellList:
 
                 #time.sleep(1)
     def Collision2(self,CellID):
-        
+
         pass
 
 
