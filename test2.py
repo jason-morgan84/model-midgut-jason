@@ -26,10 +26,11 @@ import time
 ############1.1: Create function to relate adhesive power, distance and a linear variable to alter adhesion in an intuitive way
 ############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
-#2: Add collision detection
-############2.1: Start by limting movement past PMECs
-############2.2: Add collision detection with closest cells only
-#3: Better define edges
+#2: Add data recording for analysis
+#3: Add collision detection
+############3.1: Start by limting movement past PMECs
+############3.2: Add collision detection with closest cells only
+#4: Better define edges
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
@@ -78,6 +79,15 @@ OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillC
                         Arrange = "XAlign",
                         Number = 10)]))
 
+OverallCellTypes.append(Cell.CellTypes(Name = "Leader",Format = Cell.Format(FillColour = 'lightyellow'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "Other",
+                        Position = Cell.XY(23,4),
+                        Morphology = Cell.Morphology(Radius = 1),
+                        Arrange = 'YAlign',
+                        Number = 4)]))
+
 OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
                 StartingPosition = 
                     [Cell.StartingPosition(
@@ -120,8 +130,8 @@ timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='rig
 #######################################Simulation#######################################
 #Actions to carry out before simulation
 
-MigrationSpeed = 0.01
-SpeedLimit = 0.05
+MigrationSpeed = 0.03#um/s
+SpeedLimit = 0.06
 
 for cell in Cells:
     if cell.Type == "PMEC":
@@ -159,9 +169,6 @@ def Simulate(i):
 
                 Distance = (math.hypot(cell.Position.X - Cells[neighbour].Position.X,cell.Position.Y - Cells[neighbour].Position.Y) - Cells[neighbour].Morphology.Radius - cell.Morphology.Radius)/Cells[neighbour].Morphology.Radius
 
-                AdhesiveStrength = 10
-                Freedom = 1/AdhesiveStrength * Distance
-
                 #Function for freedom (ability of cell to move independently)
                 # Between 1 and 0
                 # A distance of 0 should give a Freedom of of 0
@@ -170,15 +177,29 @@ def Simulate(i):
                 # Variable to define power of adhesion in intuitive way - ie, half the power of adhesion, double the freedom
                 
                 # Apply function to both speed limit and mean X speed (if Freedom is 1, XSpeed varies around 0, not MigrationSpeed)
+                # Need something for stickiness and for distance at which it has an effect
 
+
+
+                MinimumRadiusRatio = 0.5 #Increase this to increase the maximum distance at which adhesion can act
+                Freedom = (abs(Distance)/MinimumRadiusRatio)**1
+                if Freedom < 0: Freedom = 0
+                if Freedom > 1: Freedom = 1
            
+                Freedom = 0.2
 
-                XSpeed=np.random.normal(MigrationSpeed,SpeedLimit*Freedom)
-                YSpeed=np.random.normal(0,SpeedLimit*Freedom)
+                #Choose how often to change the speed:
+                if np.random.random()<0.1:
+                    XSpeed=np.random.normal(MigrationSpeed-MigrationSpeed*Freedom,SpeedLimit*Freedom)
+                    cell.Dynamics.Velocity.X = XSpeed
+                    YSpeed=np.random.normal(0,SpeedLimit*Freedom)
+                    cell.Dynamics.Velocity.Y = YSpeed      
+                #print(XSpeed)
 
 
-            cell.Dynamics.Velocity.X = XSpeed
-            cell.Dynamics.Velocity.Y = YSpeed      
+
+
+
 
 
         cell.UpdatePosition(cell.Dynamics.Velocity.X ,cell.Dynamics.Velocity.Y)
