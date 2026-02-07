@@ -28,8 +28,8 @@ import time
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
 #2: Add data recording for analysis
 #3: Add collision detection
-############3.1: Start by limting movement past PMECs
-############3.2: Add collision detection with closest cells only
+############3.1: Find way to deal with cells that do end up overlapping
+############3.2: Find way to deal with cells that are moving at the same speed
 #4: Better define edges
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
@@ -79,14 +79,14 @@ OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillC
                         Arrange = "XAlign",
                         Number = 10)]))
 
-OverallCellTypes.append(Cell.CellTypes(Name = "Leader",Format = Cell.Format(FillColour = 'lightyellow'),
+""" OverallCellTypes.append(Cell.CellTypes(Name = "Leader",Format = Cell.Format(FillColour = 'lightyellow'),
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Other",
                         Position = Cell.XY(23,4),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'YAlign',
-                        Number = 4)]))
+                        Number = 4)])) """
 
 OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
                 StartingPosition = 
@@ -161,10 +161,10 @@ def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
     Cells.GenerateNodeNetwork(1)
+    #first loop, work out where each cell wants to go
     for n,cell in enumerate(Cells):
         if cell.Type!="PMEC":
             #if not leader cell
-
             for neighbour in cell.Neighbours:
 
                 Distance = (math.hypot(cell.Position.X - Cells[neighbour].Position.X,cell.Position.Y - Cells[neighbour].Position.Y) - Cells[neighbour].Morphology.Radius - cell.Morphology.Radius)/Cells[neighbour].Morphology.Radius
@@ -186,7 +186,7 @@ def Simulate(i):
                 if Freedom < 0: Freedom = 0
                 if Freedom > 1: Freedom = 1
            
-                Freedom = 0.2
+                Freedom = 1
 
                 #Choose how often to change the speed:
                 if np.random.random()<0.1:
@@ -195,18 +195,16 @@ def Simulate(i):
                     YSpeed=np.random.normal(0,SpeedLimit*Freedom)
                     cell.Dynamics.Velocity.Y = YSpeed      
                 #print(XSpeed)
+            
+    #second loop, move each cell
+    for n,cell in enumerate(Cells):
+        if cell.Type!="Leader":
+            Cells.Collision(n)
+            cell.UpdatePosition(cell.Dynamics.Velocity.X ,cell.Dynamics.Velocity.Y)
 
-
-
-
-
-
-
-        cell.UpdatePosition(cell.Dynamics.Velocity.X ,cell.Dynamics.Velocity.Y)
-
-        if RealTime == True: ArtistList.append(cell.artist)
-        if RealTime == False:
-            OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
+            if RealTime == True: ArtistList.append(cell.artist)
+            if RealTime == False:
+                OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
 
     #update timer
     timer.set_text(str(i*5)+"s")

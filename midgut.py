@@ -69,16 +69,16 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Cell", Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Mover",
-                        Position = Cell.XY(5,6.5),
+                        Position = Cell.XY(7,6.5),
                         Morphology = Cell.Morphology(Radius = 1)),
                     Cell.StartingPosition(
                         ID = "Mover2",
                         Position = Cell.XY(9,10),
                         Morphology = Cell.Morphology(Radius = 1)),
-                    #Cell.StartingPosition(
-                    #    ID = "Mover3",
-                    #    Position = Cell.XY(13,10),
-                    #    Morphology = Cell.Morphology(Radius = 1)),
+                    Cell.StartingPosition(
+                        ID = "Mover3",
+                        Position = Cell.XY(12.5,10),
+                        Morphology = Cell.Morphology(Radius = 1)),
                     #Cell.StartingPosition(
                     #    ID = "Mover4",
                     #    Position = Cell.XY(8,2),
@@ -121,13 +121,14 @@ timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='rig
 #######################################Simulation#######################################
 #Actions to carry out before simulation
 
-#Cells[0].Dynamics.Force.X=0.05     
-Cells[0].Dynamics.Force.Y=-0.02    
-Cells[1].Dynamics.Force.Y=-0.05
+
+#Cells[0].Dynamics.Velocity.Y=-0.02    
+Cells[0].Dynamics.Velocity.X=0.001
+#Cells[1].Dynamics.Velocity.Y=-0.05
 #Cells[1].Dynamics.Force.X=0.05  
 #Cells[2].Dynamics.Velocity.Y=-0.05   
 #Cells[2].Dynamics.Velocity.X=-0.05  
-#Cells[3].Dynamics.Velocity.Y=0.05   
+Cells[3].Dynamics.Velocity.X=-0.001   
 #Cells[3].Dynamics.Velocity.X=0.05  
 
 #Simulation function - defines what to do on each tick of the simulation
@@ -145,24 +146,24 @@ def Simulate(i):
                 #Assuming consistent densities of cell, mass in 2D is proportional to radius squared
 
 
-                Cells.Collision2(n)
+                Cells.Collision(n)
                 VelocityX = cell.Dynamics.Velocity.X 
                 VelocityY = cell.Dynamics.Velocity.Y
 
-                AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
-                AccelerationY = cell.Dynamics.Force.Y/cell.Morphology.Radius**2
-                VelocityX += AccelerationX
-                if (abs(VelocityX) > abs(cell.Dynamics.Force.X)) and abs(cell.Dynamics.Force.X != 0) :
-                    VelocityX = cell.Dynamics.Force.X
+                #AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
+                #AccelerationY = cell.Dynamics.Force.Y/cell.Morphology.Radius**2
+                #VelocityX += AccelerationX
+                #if (abs(VelocityX) > abs(cell.Dynamics.Force.X)) and abs(cell.Dynamics.Force.X != 0) :
+                #    VelocityX = cell.Dynamics.Force.X
 
-                VelocityY += AccelerationY
+                #VelocityY += AccelerationY
 
-                if (abs(VelocityY) > abs(cell.Dynamics.Force.Y)) and abs(cell.Dynamics.Force.Y != 0) :
-                    VelocityY = cell.Dynamics.Force.Y
+                i#f (abs(VelocityY) > abs(cell.Dynamics.Force.Y)) and abs(cell.Dynamics.Force.Y != 0) :
+                 #   VelocityY = cell.Dynamics.Force.Y
 
                 cell.UpdatePosition(VelocityX,VelocityY)
-                cell.Dynamics.Velocity.X = VelocityX
-                cell.Dynamics.Velocity.Y = VelocityY
+                #cell.Dynamics.Velocity.X = VelocityX
+                #cell.Dynamics.Velocity.Y = VelocityY
 
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
