@@ -21,7 +21,7 @@ import time
 
 #TO DO:
 
-
+#0: Rearrange code to proper files
 #1: Add adhesion
 ############1.1: Create function to relate adhesive power, distance and a linear variable to alter adhesion in an intuitive way
 ############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
