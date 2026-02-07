@@ -52,9 +52,8 @@ class CellTypes:
                                 Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
-                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
-                                Neighbours=[])
-                            #NewCell.Position.Vertices = NewCell.GetCellCoords()       
+                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
+                                Neighbours=[])    
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
                 for n in range(position.Number):
@@ -71,7 +70,7 @@ class CellTypes:
                         Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
-                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                         Neighbours=[])
                     #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
@@ -84,9 +83,8 @@ class CellTypes:
                     Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
                     Format = self.Format,
-                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                     Neighbours=[])
-                NewCell.Position.Vertices = NewCell.GetCellCoords()
                 OutputCellList.append(NewCell)
         return OutputCellList
 
@@ -118,9 +116,10 @@ class Format:
         self.LineWidth = LineWidth
 
 class Dynamics:
-    def __init__(self, Velocity=[0,0], Force = [0,0]):
+    def __init__(self, Velocity=[0,0], Force = [0,0], AppliedForce=[0,0]):
         self.Velocity=Velocity
         self.Force = Force
+        self.AppliedForce = AppliedForce
 
 class Cells:
     def __init__(self, ID, Type, Position, Morphology, Format, Dynamics,Neighbours):
@@ -183,49 +182,135 @@ class CellList:
         #of those neighbours.
         # 
         #Data is stored in Cell class in Neihbours as a list of 2D arrays
-        #Neighbours[0] gives the index of a Neighbour cell in Cells_List 
-        #Neighbours[1] gives the distance of that cell
+        #Neighbours gives the index of a Neighbour cell in Cells_List 
+        [cell.Neighbours.clear() for cell in self.Cells_List]
         for n, cell in enumerate(self.Cells_List):
+
             #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
-            for i in range(n+1,len(self.Cells_List),1):
+            for i in range(n + 1, len(self.Cells_List), 1):
                 #Calculate distance between cells: distance between centres subtract the two radiuseses
                 Distance = math.sqrt((cell.Position.X-self.Cells_List[i].Position.X)**2 + (cell.Position.Y-self.Cells_List[i].Position.Y)**2)-cell.Morphology.Radius - self.Cells_List[i].Morphology.Radius
                 #if polygon contains points, the regions intesersect; add each cell to the other cells network.
                 if (Distance < MaxNeighbourDistance):
-                    cell.Neighbours.append([i,Distance])
-                    self.Cells_List[i].Neighbours.append([n,Distance])
+                    cell.Neighbours.append(i)
+                    self.Cells_List[i].Neighbours.append(n)
       
+
     def Collision(self,CellID):
+        Cell1VelocityX = self[CellID].Dynamics.Velocity.X
+        Cell1VelocityY = self[CellID].Dynamics.Velocity.Y
+
+        Cell1X = self[CellID].Position.X + Cell1VelocityX
+        Cell1Y = self[CellID].Position.Y + Cell1VelocityY
+
         for neighbour in self.Cells_List[CellID].Neighbours:
-            MinDistance = self.Cells_List[neighbour[0]].Morphology.Radius + self.Cells_List[CellID].Morphology.Radius
-            Distance = math.hypot((self.Cells_List[neighbour[0]].Position.X - self.Cells_List[CellID].Position.X+self.Cells_List[CellID].Dynamics.Velocity.X),(self.Cells_List[neighbour[0]].Position.Y - self.Cells_List[CellID].Position.Y+self.Cells_List[CellID].Dynamics.Velocity.Y))
-            #print(CellID,neighbour[0],MinDistance,Distance)
-            if Distance <= MinDistance:
-               # print("Collision between ",CellID,neighbour[0])
-                Cell1Mass = 1
-                Cell2Mass = 1
-                Cell1ScalarSpeed = math.hypot(self.Cells_List[CellID].Dynamics.Velocity.Y,self.Cells_List[CellID].Dynamics.Velocity.X)
-                Cell2ScalarSpeed = math.hypot(self.Cells_List[neighbour[0]].Dynamics.Velocity.Y,self.Cells_List[neighbour[0]].Dynamics.Velocity.X)
-                Cell1MovementAngle = math.atan2(self.Cells_List[CellID].Dynamics.Velocity.Y,self.Cells_List[CellID].Dynamics.Velocity.X)
-                Cell2MovementAngle = math.atan2(self.Cells_List[neighbour[0]].Dynamics.Velocity.Y,self.Cells_List[neighbour[0]].Dynamics.Velocity.X)
-                ContactAngle = Cell1MovementAngle - math.atan2(self.Cells_List[CellID].Position.Y-self.Cells_List[neighbour[0]].Position.Y,self.Cells_List[CellID].Position.X-self.Cells_List[neighbour[0]].Position.X)
-                #math.atan2(self.Cells_List[CellID].Position.X - self.Cells_List[neighbour[0]].Position.X,self.Cells_List[CellID].Position.Y - self.Cells_List[neighbour[0]].Position.Y)
 
-                #print(Cell1ScalarSpeed,Cell2ScalarSpeed)
+            MinimumDistance = self[CellID].Morphology.Radius + self[neighbour].Morphology.Radius
 
-                Cell1VelocityX = ((Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle)*(Cell1Mass-Cell2Mass) + 2 * Cell2Mass * Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.cos(ContactAngle) + Cell1ScalarSpeed*math.sin(Cell1MovementAngle-ContactAngle)*math.cos(ContactAngle+math.pi/2)
-                Cell1VelocityY = ((Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle)*(Cell1Mass-Cell2Mass) + 2 * Cell2Mass * Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.sin(ContactAngle) + Cell1ScalarSpeed*math.sin(Cell1MovementAngle-ContactAngle)*math.sin(ContactAngle+math.pi/2)
-                Cell2VelocityX = ((Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle)*(Cell2Mass-Cell1Mass) + 2 * Cell1Mass * Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.cos(ContactAngle) + Cell2ScalarSpeed*math.sin(Cell2MovementAngle-ContactAngle)*math.cos(ContactAngle+math.pi/2)
-                Cell2VelocityY = ((Cell2ScalarSpeed * math.cos(Cell2MovementAngle-ContactAngle)*(Cell2Mass-Cell1Mass) + 2 * Cell1Mass * Cell1ScalarSpeed * math.cos(Cell1MovementAngle-ContactAngle))/(Cell1Mass+Cell2Mass))*math.sin(ContactAngle) + Cell2ScalarSpeed*math.sin(Cell2MovementAngle-ContactAngle)*math.sin(ContactAngle+math.pi/2)
+            Cell2X = self[neighbour].Position.X
+            Cell2Y = self[neighbour].Position.Y
 
-                #print(Cell1VelocityX,Cell1VelocityY,Cell2VelocityX,Cell2VelocityY)
-                self.Cells_List[CellID].Dynamics.Velocity.X = Cell1VelocityX
-                self.Cells_List[CellID].Dynamics.Velocity.Y = Cell1VelocityY
+            Cell2NewX = Cell2X + self[neighbour].Dynamics.Velocity.X      
+            Cell2NewY = Cell2Y + self[neighbour].Dynamics.Velocity.Y
 
-                self.Cells_List[neighbour[0]].Dynamics.Velocity.X = Cell2VelocityX
-                self.Cells_List[neighbour[0]].Dynamics.Velocity.Y = Cell2VelocityY
+            Distance = math.hypot(Cell2Y - (Cell1Y + Cell1VelocityY) , Cell2X - (Cell1X + Cell1VelocityX))
+            DistanceNew = math.hypot(Cell2NewY - (Cell1Y + Cell1VelocityY) , Cell2NewX - (Cell1X + Cell1VelocityX))
+         
+            #if (Distance <= MinimumDistance or DistanceNew < MinimumDistance) and Cell1VelocityX != self[neighbour].Dynamics.Velocity.X:
+            if (DistanceNew < MinimumDistance) and Cell1VelocityX != self[neighbour].Dynamics.Velocity.X:
+                #Changes the new velocity of the cell to the component of its current velocity perpendicular to a vector between
+                #the cell and the colliding neighbour.
+                # Does this by finding the projection component of the velocity (parallel to vector between the cells)
+                # and subtracting this from the velocity vector
+                # If velocity vector V = (Vx, Vy) and vector between cells D = (Dx, Dy)
+                # then projection component = (V.D/D.D) * D
 
-                #time.sleep(2.5)
+                DifferenceX = Cell1X - Cell2X
+                DifferenceY = Cell1Y - Cell2Y
+                VDDotProduct = Cell1VelocityX * DifferenceX + Cell1VelocityY * DifferenceY
+                ParallelX = VDDotProduct / math.hypot(DifferenceX, DifferenceY) ** 2 * DifferenceX
+                ParallelY = VDDotProduct / math.hypot(DifferenceX, DifferenceY) ** 2 * DifferenceY
+                PerpendicularX = Cell1VelocityX - ParallelX
+                PerpendicularY = Cell1VelocityY - ParallelY
+                self[CellID].Dynamics.Velocity.X = PerpendicularX
+                self[CellID].Dynamics.Velocity.Y = PerpendicularY
+
+                
+
+            
+
+
+
+
+    def Collision_complex_part_working(self,CellID):
+        Damping = 0
+        Cell1VelocityX = self[CellID].Dynamics.Velocity.X
+        Cell1VelocityY = self[CellID].Dynamics.Velocity.Y
+
+        Cell1NewX = self[CellID].Position.X + Cell1VelocityX
+        Cell1NewY = self[CellID].Position.Y + Cell1VelocityY
+        for neighbour in self.Cells_List[CellID].Neighbours:
+            Cell2X = self[neighbour].Position.X
+            Cell2Y = self[neighbour].Position.Y
+            Distance = math.hypot(Cell2X - Cell1NewX , Cell2Y - Cell1NewY)
+            if Distance < self[CellID].Morphology.Radius + self[neighbour].Morphology.Radius:
+                Cell1ScalarVelocity = math.hypot(Cell1VelocityX, Cell1VelocityY)
+                Cell2VelocityX = self[neighbour].Dynamics.Velocity.X
+                Cell2VelocityY = self[neighbour].Dynamics.Velocity.Y
+                Cell2ScalarVelocity = math.hypot(Cell2VelocityX, Cell2VelocityY)
+                print("Collision between ",CellID," and ",neighbour)
+
+                """#Simple method - stop the cell if they touch in any way
+                #self[CellID].Dynamics.Velocity.X = self[CellID].Dynamics.Velocity.Y = 0
+                #self[neighbour].Dynamics.Velocity.X = self[neighbour].Dynamics.Velocity.Y = 0"""
+
+                #Harder method - remove component of velocity towards the cell, leave perpendicular component
+                #Get angle from Cell1 to Cell2
+                CellLineAngle = math.atan2(Cell2Y - Cell1NewY,Cell2X - Cell1NewX)
+                if (CellLineAngle>math.pi/2): CellLineAngle -= math.pi
+
+                #Get angle of Cell1s Velocity
+                Cell1VelocityAngle = math.atan2(Cell1VelocityY, Cell1VelocityX)
+                Cell2VelocityAngle = math.atan2(Cell2VelocityY, Cell2VelocityX)
+
+                #get sum of absolute angles
+                Cell1AngleSum = abs(CellLineAngle) + abs(Cell1VelocityAngle)
+                Cell2AngleSum = abs(CellLineAngle) + abs(Cell2VelocityAngle)
+
+                Cell1NewScalarVelocity = math.sin(Cell1AngleSum) * Cell1ScalarVelocity
+                Cell2NewScalarVelocity = math.sin(Cell2AngleSum) * Cell2ScalarVelocity
+
+                NewAngle = CellLineAngle-math.pi/2
+
+
+                NewCell1VelocityY = round(math.sin(NewAngle) * Cell1NewScalarVelocity,3)
+                NewCell1VelocityX = round(math.cos(NewAngle) * Cell1NewScalarVelocity,3)
+
+                NewCell2VelocityY = round(math.sin(NewAngle) * Cell2NewScalarVelocity,3)
+                NewCell2VelocityX = round(math.cos(NewAngle) * Cell2NewScalarVelocity,3)
+
+
+                if NewCell1VelocityX < 0 and Cell1VelocityX > 0 or NewCell1VelocityX > 0 and Cell1VelocityX < 0:
+                     NewCell1VelocityX = -NewCell1VelocityX
+                if NewCell1VelocityY < 0 and Cell1VelocityY> 0 or NewCell1VelocityY > 0 and Cell1VelocityY < 0:
+                     NewCell1VelocityY = -NewCell1VelocityY
+
+                if NewCell2VelocityX < 0 and Cell2VelocityX > 0 or NewCell2VelocityX > 0 and Cell2VelocityX < 0:
+                     NewCell2VelocityX = -NewCell2VelocityX
+                if NewCell2VelocityY < 0 and Cell2VelocityY> 0 or NewCell2VelocityY > 0 and Cell2VelocityY < 0:
+                     NewCell2VelocityY = -NewCell2VelocityY
+
+
+                self[CellID].Dynamics.Velocity.X = NewCell1VelocityX * (1 - Damping)
+                self[CellID].Dynamics.Velocity.Y = NewCell1VelocityY * (1 - Damping)
+
+                self[neighbour].Dynamics.Velocity.X = NewCell2VelocityX * (1 - Damping)
+                self[neighbour].Dynamics.Velocity.Y = NewCell2VelocityY * (1 - Damping)
+
+                #time.sleep(1)
+    def Collision2(self,CellID):
+
+        pass
 
 
     

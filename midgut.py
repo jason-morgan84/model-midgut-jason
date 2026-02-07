@@ -60,39 +60,35 @@ RealTime = True
 #LeftBound=//
 #RightBound=//
 
-Elasticity = 1
-Damping = 0.1
-
-
 
 #####################################Cell Properties####################################
 #Define cell types and starting positions
 OverallCellTypes=[]
 
-OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillColour = 'powderblue'),
+OverallCellTypes.append(Cell.CellTypes(Name = "Cell", Format = Cell.Format(FillColour = 'powderblue'),
                 StartingPosition = 
                     [Cell.StartingPosition(
-                        ID = "UpperPMEC",
-                        Position = Cell.XY(1,13),
-                        Morphology = Cell.Morphology(Radius = 1),
-                        Arrange = "XAlign",
-                        Number = 10),
+                        ID = "Mover",
+                        Position = Cell.XY(7,6.5),
+                        Morphology = Cell.Morphology(Radius = 1)),
                     Cell.StartingPosition(
-                        ID = "LowerPMEC",
-                        Position = Cell.XY(1,2),
-                        Morphology = Cell.Morphology(Radius = 1),
-                        Arrange = "XAlign",
-                        Number = 10)]))
+                        ID = "Mover2",
+                        Position = Cell.XY(9,10),
+                        Morphology = Cell.Morphology(Radius = 1)),
+                    Cell.StartingPosition(
+                        ID = "Mover3",
+                        Position = Cell.XY(12.5,10),
+                        Morphology = Cell.Morphology(Radius = 1)),
+                    #Cell.StartingPosition(
+                    #    ID = "Mover4",
+                    #    Position = Cell.XY(8,2),
+                    #    Morphology = Cell.Morphology(Radius = 1)),
+                    Cell.StartingPosition(
+                        ID = "Stander",
+                        #Position = Cell.XY(10,5),
+                        Position = Cell.XY(10,5),
+                        Morphology = Cell.Morphology(Radius = 2))]))
 
-OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
-                StartingPosition = 
-                    [Cell.StartingPosition(
-                        ID = "Other",
-                        Position = Cell.XY(1,4),
-                        Morphology = Cell.Morphology(Radius = 1),
-                        Arrange = 'Pack',
-                        DrawLimits = Cell.XY(21,13),
-                        Density = 0.9)]))
 
 TopBoundary = 14
 LowerBoundary = 1
@@ -125,33 +121,50 @@ timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='rig
 #######################################Simulation#######################################
 #Actions to carry out before simulation
 
-x=0
-while x == 0:
-    random_cell=int(np.random.random()*40)
-    if Cells[random_cell].Type=='Other':
-        
-        Cells[random_cell].Dynamics.Velocity.X = (np.random.random()-0.5)*0.05
-        Cells[random_cell].Dynamics.Velocity.Y = (np.random.random()-0.5)*0.05
-        break
-        
+
+#Cells[0].Dynamics.Velocity.Y=-0.02    
+Cells[0].Dynamics.Velocity.X=0.001
+#Cells[1].Dynamics.Velocity.Y=-0.05
+#Cells[1].Dynamics.Force.X=0.05  
+#Cells[2].Dynamics.Velocity.Y=-0.05   
+#Cells[2].Dynamics.Velocity.X=-0.05  
+Cells[3].Dynamics.Velocity.X=-0.001   
+#Cells[3].Dynamics.Velocity.X=0.05  
 
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
 
 def Simulate(i):
-
     ArtistList=[]
     OutputPositions=[]
-
     Cells.GenerateNodeNetwork(1)
-
-
     for n,cell in enumerate(Cells):
+        #print(n,cell.Neighbours)
         #only append cell to artists list if it has forces applied to it or speed that would require redrawing
         if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
+                #Update velocities from speed - force gives a maximum speed (resistance to further acceleration is assumed at this point)
+                #Assuming consistent densities of cell, mass in 2D is proportional to radius squared
+
 
                 Cells.Collision(n)
-                cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
+                VelocityX = cell.Dynamics.Velocity.X 
+                VelocityY = cell.Dynamics.Velocity.Y
+
+                #AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
+                #AccelerationY = cell.Dynamics.Force.Y/cell.Morphology.Radius**2
+                #VelocityX += AccelerationX
+                #if (abs(VelocityX) > abs(cell.Dynamics.Force.X)) and abs(cell.Dynamics.Force.X != 0) :
+                #    VelocityX = cell.Dynamics.Force.X
+
+                #VelocityY += AccelerationY
+
+                i#f (abs(VelocityY) > abs(cell.Dynamics.Force.Y)) and abs(cell.Dynamics.Force.Y != 0) :
+                 #   VelocityY = cell.Dynamics.Force.Y
+
+                cell.UpdatePosition(VelocityX,VelocityY)
+                #cell.Dynamics.Velocity.X = VelocityX
+                #cell.Dynamics.Velocity.Y = VelocityY
+
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
@@ -177,7 +190,7 @@ def Replay(i):
 #If not running in real time, runs the simulation through and saves position of each cell at each tick, the draws animation based
 #on this saved data
 if RealTime == True:
-    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=10, blit=True,repeat=False)
+    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=40, blit=True,repeat=False)
 elif RealTime == False:
     RecordedPositions=[]
     for tick in range(TickNumber):
@@ -202,7 +215,7 @@ def onpick1(event):
                 #cell.Dynamics.Velocity.Y = (np.random.random()-0.5)*0.5
                 #print(cell.Neighbours)
                 for item in cell.Neighbours:
-                    Cells[item[0]].artist.set_edgecolor('red')     
+                    Cells[item].artist.set_edgecolor('red')     
     else:
         for cell in Cells:
             cell.artist.set_edgecolor('black')
