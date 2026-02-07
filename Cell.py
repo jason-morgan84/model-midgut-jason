@@ -215,7 +215,11 @@ class CellList:
 
             Distance = math.hypot(Cell2Y - (Cell1Y + Cell1VelocityY) , Cell2X - (Cell1X + Cell1VelocityX))
             DistanceNew = math.hypot(Cell2NewY - (Cell1Y + Cell1VelocityY) , Cell2NewX - (Cell1X + Cell1VelocityX))
-         
+
+            Cell2VelocityX = self[neighbour].Dynamics.Velocity.X
+            Cell2VelocityY = self[neighbour].Dynamics.Velocity.Y
+
+  
             #if (Distance <= MinimumDistance or DistanceNew < MinimumDistance) and Cell1VelocityX != self[neighbour].Dynamics.Velocity.X:
             if (DistanceNew < MinimumDistance) and Cell1VelocityX != self[neighbour].Dynamics.Velocity.X:
                 #Changes the new velocity of the cell to the component of its current velocity perpendicular to a vector between
@@ -237,7 +241,30 @@ class CellList:
 
                 
 
-            
+    def UpdatePosition(self, CellID):
+
+
+
+
+        #MaxOverlap = 0
+        #for neighbour in self[CellID].Neighbours:
+           # Distance = math.hypot(self[neighbour].Position.Y - self[CellID].Position.Y,self[neighbour].Position.X - self[CellID].Position.X)
+          #  Overlap = (self[CellID].Morphology.Radius + self[neighbour].Morphology.Radius) - Distance
+         #   if Overlap > MaxOverlap: MaxOverlap = Overlap
+        #if MaxOverlap > 0:
+            #if self[CellID].Position.X < self[neighbour].Position.X:
+            #    self[CellID].Position.X -= (MaxOverlap + 0.1)
+           # else:
+           #     self[CellID].Position.X += (MaxOverlap + 0.1)
+          #  if self[CellID].Position.Y < self[neighbour].Position.Y:
+         #       self[CellID].Position.Y -= (MaxOverlap + 0.1)
+        #    else:
+        #        self[CellID].Position.Y += (MaxOverlap + 0.1)
+        #else:
+            self[CellID].Position.X += self[CellID].Dynamics.Velocity.X
+            self[CellID].Position.Y += self[CellID].Dynamics.Velocity.Y
+
+            self[CellID].artist.center = self[CellID].Position.AsList()        
 
 
 

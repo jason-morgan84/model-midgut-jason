@@ -21,17 +21,15 @@ import time
 
 #TO DO:
 
-#0: Fix neighbours, check everythings working with circles
-#1: Add collision detection
-############1.2: Add collision detection with closest cells only
-##########################1.5.1: For testing: Make collision propogate speed through cells
-############1.6: Look up potential property to simply define effects of collision - elasticity?
-############1.7: Random movement?
-#2: Add adhesion
-############2.1: Add movement to PMECs
-############2.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
-##########################2.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
-#3: Better define edges
+#1: Add adhesion
+############1.1: Create function to relate adhesive power, distance and a linear variable to alter adhesion in an intuitive way
+############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+#2: Add data recording for analysis
+#3: Add collision detection
+############3.1: Find way to deal with cells that do end up overlapping
+############3.2: Find way to deal with cells that are moving at the same speed
+#4: Better define edges
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
@@ -65,29 +63,39 @@ RealTime = True
 #Define cell types and starting positions
 OverallCellTypes=[]
 
-OverallCellTypes.append(Cell.CellTypes(Name = "Cell", Format = Cell.Format(FillColour = 'powderblue'),
+OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillColour = 'powderblue'),
                 StartingPosition = 
                     [Cell.StartingPosition(
-                        ID = "Mover",
-                        Position = Cell.XY(7,6.5),
-                        Morphology = Cell.Morphology(Radius = 1)),
+                        ID = "UpperPMEC",
+                        Position = Cell.XY(1,13),
+                        Morphology = Cell.Morphology(Radius = 1),
+                        Arrange = "XAlign",
+                        Number = 10),
                     Cell.StartingPosition(
-                        ID = "Mover2",
-                        Position = Cell.XY(9,10),
-                        Morphology = Cell.Morphology(Radius = 1)),
-                    Cell.StartingPosition(
-                        ID = "Mover3",
-                        Position = Cell.XY(12.5,10),
-                        Morphology = Cell.Morphology(Radius = 1)),
-                    #Cell.StartingPosition(
-                    #    ID = "Mover4",
-                    #    Position = Cell.XY(8,2),
-                    #    Morphology = Cell.Morphology(Radius = 1)),
-                    Cell.StartingPosition(
-                        ID = "Stander",
-                        #Position = Cell.XY(10,5),
-                        Position = Cell.XY(10,5),
-                        Morphology = Cell.Morphology(Radius = 2))]))
+                        ID = "LowerPMEC",
+                        Position = Cell.XY(1,2),
+                        Morphology = Cell.Morphology(Radius = 1),
+                        Arrange = "XAlign",
+                        Number = 10)]))
+
+""" OverallCellTypes.append(Cell.CellTypes(Name = "Leader",Format = Cell.Format(FillColour = 'lightyellow'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "Other",
+                        Position = Cell.XY(23,4),
+                        Morphology = Cell.Morphology(Radius = 1),
+                        Arrange = 'YAlign',
+                        Number = 4)])) """
+
+OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "Other",
+                        Position = Cell.XY(1,4),
+                        Morphology = Cell.Morphology(Radius = 1),
+                        Arrange = 'Pack',
+                        DrawLimits = Cell.XY(21,13),
+                        Density = 0.8)]))
 
 
 TopBoundary = 14
@@ -121,58 +129,83 @@ timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='rig
 #######################################Simulation#######################################
 #Actions to carry out before simulation
 
+MigrationSpeed = 0.03#um/s
+SpeedLimit = 0.06
 
-#Cells[0].Dynamics.Velocity.Y=-0.02    
-Cells[0].Dynamics.Velocity.X=0.001
-#Cells[1].Dynamics.Velocity.Y=-0.05
-#Cells[1].Dynamics.Force.X=0.05  
-#Cells[2].Dynamics.Velocity.Y=-0.05   
-#Cells[2].Dynamics.Velocity.X=-0.05  
-Cells[3].Dynamics.Velocity.X=-0.001   
-#Cells[3].Dynamics.Velocity.X=0.05  
+for cell in Cells:
+    if cell.Type == "PMEC":
+        cell.Dynamics.Velocity.X = MigrationSpeed
+
+
 
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
+
+
+
+#if cell is close, constrain speed
+#depending on power of adhesion, speed must be speed of cell +- x
+
+
 
 def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
     Cells.GenerateNodeNetwork(1)
+    #first loop, work out where each cell wants to go
     for n,cell in enumerate(Cells):
-        #print(n,cell.Neighbours)
-        #only append cell to artists list if it has forces applied to it or speed that would require redrawing
-        if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
-                #Update velocities from speed - force gives a maximum speed (resistance to further acceleration is assumed at this point)
-                #Assuming consistent densities of cell, mass in 2D is proportional to radius squared
+        if cell.Type!="PMEC":
+            #if not leader cell
+            for neighbour in cell.Neighbours:
+
+                Distance = (math.hypot(cell.Position.X - Cells[neighbour].Position.X,cell.Position.Y - Cells[neighbour].Position.Y) - Cells[neighbour].Morphology.Radius - cell.Morphology.Radius)/Cells[neighbour].Morphology.Radius
+
+                #Function for freedom (ability of cell to move independently)
+                # Between 1 and 0
+                # A distance of 0 should give a Freedom of of 0
+                # As distance increases, Freedom should tend to 1
+                # Variable to define ~where Freedom should hit 1 in terms of multiples of cell radius - 1 radius, 2 radiuses etc
+                # Variable to define power of adhesion in intuitive way - ie, half the power of adhesion, double the freedom
+                
+                # Apply function to both speed limit and mean X speed (if Freedom is 1, XSpeed varies around 0, not MigrationSpeed)
+                # Need something for stickiness and for distance at which it has an effect
 
 
-                Cells.Collision(n)
-                VelocityX = cell.Dynamics.Velocity.X 
-                VelocityY = cell.Dynamics.Velocity.Y
 
-                #AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
-                #AccelerationY = cell.Dynamics.Force.Y/cell.Morphology.Radius**2
-                #VelocityX += AccelerationX
-                #if (abs(VelocityX) > abs(cell.Dynamics.Force.X)) and abs(cell.Dynamics.Force.X != 0) :
-                #    VelocityX = cell.Dynamics.Force.X
+                MinimumRadiusRatio = 0.5 #Increase this to increase the maximum distance at which adhesion can act
+                Freedom = (abs(Distance)/MinimumRadiusRatio)**1
+                if Freedom < 0: Freedom = 0
+                if Freedom > 1: Freedom = 1
+           
+                Freedom = 1
 
-                #VelocityY += AccelerationY
+                #Choose how often to change the speed:
+                if np.random.random()<0.1:
+                    XSpeed=np.random.normal(MigrationSpeed-MigrationSpeed*Freedom,SpeedLimit*Freedom)
+                    cell.Dynamics.Velocity.X = XSpeed
+                    YSpeed=np.random.normal(0,SpeedLimit*Freedom)
+                    cell.Dynamics.Velocity.Y = YSpeed      
+                #print(XSpeed)
+            
+    #second loop, move each cell
+    for n,cell in enumerate(Cells):
+        if cell.Type!="Leader":
+            Cells.Collision(n)
 
-                i#f (abs(VelocityY) > abs(cell.Dynamics.Force.Y)) and abs(cell.Dynamics.Force.Y != 0) :
-                 #   VelocityY = cell.Dynamics.Force.Y
+            Cells.UpdatePosition(n)
 
-                cell.UpdatePosition(VelocityX,VelocityY)
-                #cell.Dynamics.Velocity.X = VelocityX
-                #cell.Dynamics.Velocity.Y = VelocityY
-
-        if RealTime == True: ArtistList.append(cell.artist)
-        if RealTime == False:
-            OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
+            if RealTime == True: ArtistList.append(cell.artist)
+            if RealTime == False:
+                OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
 
     #update timer
     timer.set_text(str(i*5)+"s")
     ArtistList.append(timer)
     return tuple(ArtistList) if RealTime == True else OutputPositions
+
+
+ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=40, blit=True,repeat=False)   
+
 
 
 #########################################Replay#########################################
