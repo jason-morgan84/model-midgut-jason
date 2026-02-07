@@ -52,7 +52,7 @@ class CellTypes:
                                 Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
-                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                                 Neighbours=[])    
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
@@ -70,7 +70,7 @@ class CellTypes:
                         Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
-                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                         Neighbours=[])
                     #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
@@ -83,7 +83,7 @@ class CellTypes:
                     Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
                     Format = self.Format,
-                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0)),
+                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
                     Neighbours=[])
                 OutputCellList.append(NewCell)
         return OutputCellList
@@ -116,9 +116,10 @@ class Format:
         self.LineWidth = LineWidth
 
 class Dynamics:
-    def __init__(self, Velocity=[0,0], Force = [0,0]):
+    def __init__(self, Velocity=[0,0], Force = [0,0], AppliedForce=[0,0]):
         self.Velocity=Velocity
         self.Force = Force
+        self.AppliedForce = AppliedForce
 
 class Cells:
     def __init__(self, ID, Type, Position, Morphology, Format, Dynamics,Neighbours):
@@ -194,7 +195,54 @@ class CellList:
                     cell.Neighbours.append(i)
                     self.Cells_List[i].Neighbours.append(n)
       
+
     def Collision(self,CellID):
+        Cell1VelocityX = self[CellID].Dynamics.Velocity.X
+        Cell1VelocityY = self[CellID].Dynamics.Velocity.Y
+
+        Cell1X = self[CellID].Position.X + Cell1VelocityX
+        Cell1Y = self[CellID].Position.Y + Cell1VelocityY
+
+        for neighbour in self.Cells_List[CellID].Neighbours:
+
+            MinimumDistance = self[CellID].Morphology.Radius + self[neighbour].Morphology.Radius
+
+            Cell2X = self[neighbour].Position.X
+            Cell2Y = self[neighbour].Position.Y
+
+            Cell2NewX = Cell2X + self[neighbour].Dynamics.Velocity.X      
+            Cell2NewY = Cell2Y + self[neighbour].Dynamics.Velocity.Y
+
+            Distance = math.hypot(Cell2Y - (Cell1Y + Cell1VelocityY) , Cell2X - (Cell1X + Cell1VelocityX))
+            DistanceNew = math.hypot(Cell2NewY - (Cell1Y + Cell1VelocityY) , Cell2NewX - (Cell1X + Cell1VelocityX))
+         
+            #if (Distance <= MinimumDistance or DistanceNew < MinimumDistance) and Cell1VelocityX != self[neighbour].Dynamics.Velocity.X:
+            if (DistanceNew < MinimumDistance) and Cell1VelocityX != self[neighbour].Dynamics.Velocity.X:
+                #Changes the new velocity of the cell to the component of its current velocity perpendicular to a vector between
+                #the cell and the colliding neighbour.
+                # Does this by finding the projection component of the velocity (parallel to vector between the cells)
+                # and subtracting this from the velocity vector
+                # If velocity vector V = (Vx, Vy) and vector between cells D = (Dx, Dy)
+                # then projection component = (V.D/D.D) * D
+
+                DifferenceX = Cell1X - Cell2X
+                DifferenceY = Cell1Y - Cell2Y
+                VDDotProduct = Cell1VelocityX * DifferenceX + Cell1VelocityY * DifferenceY
+                ParallelX = VDDotProduct / math.hypot(DifferenceX, DifferenceY) ** 2 * DifferenceX
+                ParallelY = VDDotProduct / math.hypot(DifferenceX, DifferenceY) ** 2 * DifferenceY
+                PerpendicularX = Cell1VelocityX - ParallelX
+                PerpendicularY = Cell1VelocityY - ParallelY
+                self[CellID].Dynamics.Velocity.X = PerpendicularX
+                self[CellID].Dynamics.Velocity.Y = PerpendicularY
+
+                
+
+            
+
+
+
+
+    def Collision_complex_part_working(self,CellID):
         Damping = 0
         Cell1VelocityX = self[CellID].Dynamics.Velocity.X
         Cell1VelocityY = self[CellID].Dynamics.Velocity.Y
@@ -261,7 +309,7 @@ class CellList:
 
                 #time.sleep(1)
     def Collision2(self,CellID):
-        
+
         pass
 
 

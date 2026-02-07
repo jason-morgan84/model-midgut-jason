@@ -69,7 +69,7 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Cell", Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Mover",
-                        Position = Cell.XY(5,6.5),
+                        Position = Cell.XY(7,6.5),
                         Morphology = Cell.Morphology(Radius = 1)),
                     Cell.StartingPosition(
                         ID = "Mover2",
@@ -77,12 +77,12 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Cell", Format = Cell.Format(FillC
                         Morphology = Cell.Morphology(Radius = 1)),
                     Cell.StartingPosition(
                         ID = "Mover3",
-                        Position = Cell.XY(13,10),
+                        Position = Cell.XY(12.5,10),
                         Morphology = Cell.Morphology(Radius = 1)),
-                    Cell.StartingPosition(
-                        ID = "Mover4",
-                        Position = Cell.XY(8,2),
-                        Morphology = Cell.Morphology(Radius = 1)),
+                    #Cell.StartingPosition(
+                    #    ID = "Mover4",
+                    #    Position = Cell.XY(8,2),
+                    #    Morphology = Cell.Morphology(Radius = 1)),
                     Cell.StartingPosition(
                         ID = "Stander",
                         #Position = Cell.XY(10,5),
@@ -121,14 +121,15 @@ timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='rig
 #######################################Simulation#######################################
 #Actions to carry out before simulation
 
-Cells[0].Dynamics.Velocity.X=0.05     
-Cells[0].Dynamics.Velocity.Y=-0.02    
-Cells[1].Dynamics.Velocity.Y=-0.05
-Cells[1].Dynamics.Velocity.X=0.05  
-Cells[2].Dynamics.Velocity.Y=-0.05   
-Cells[2].Dynamics.Velocity.X=-0.05  
-Cells[3].Dynamics.Velocity.Y=0.05   
-Cells[3].Dynamics.Velocity.X=0.05  
+
+#Cells[0].Dynamics.Velocity.Y=-0.02    
+Cells[0].Dynamics.Velocity.X=0.001
+#Cells[1].Dynamics.Velocity.Y=-0.05
+#Cells[1].Dynamics.Force.X=0.05  
+#Cells[2].Dynamics.Velocity.Y=-0.05   
+#Cells[2].Dynamics.Velocity.X=-0.05  
+Cells[3].Dynamics.Velocity.X=-0.001   
+#Cells[3].Dynamics.Velocity.X=0.05  
 
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
@@ -143,16 +144,27 @@ def Simulate(i):
         if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
                 #Update velocities from speed - force gives a maximum speed (resistance to further acceleration is assumed at this point)
                 #Assuming consistent densities of cell, mass in 2D is proportional to radius squared
-                #AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
-                #AccelerationY = cell.Dynamics.Force.X/cell.Morphology.Radius**2
-                #cell.Dynamics.Velocity.X += AccelerationX
-                if abs(cell.Dynamics.Velocity.X) > abs(cell.Dynamics.Force.X) and abs(cell.Dynamics.Force.X > 0) :
-                    cell.Dynamics.Velocity.X = cell.Dynamics.Force.X
-                #cell.Dynamics.Velocity.Y += AccelerationX
-                if abs(cell.Dynamics.Velocity.Y) > abs(cell.Dynamics.Force.Y) and abs(cell.Dynamics.Force.Y > 0) :
-                    cell.Dynamics.Velocity.Y = cell.Dynamics.Force.Y
+
+
                 Cells.Collision(n)
-                cell.UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
+                VelocityX = cell.Dynamics.Velocity.X 
+                VelocityY = cell.Dynamics.Velocity.Y
+
+                #AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
+                #AccelerationY = cell.Dynamics.Force.Y/cell.Morphology.Radius**2
+                #VelocityX += AccelerationX
+                #if (abs(VelocityX) > abs(cell.Dynamics.Force.X)) and abs(cell.Dynamics.Force.X != 0) :
+                #    VelocityX = cell.Dynamics.Force.X
+
+                #VelocityY += AccelerationY
+
+                i#f (abs(VelocityY) > abs(cell.Dynamics.Force.Y)) and abs(cell.Dynamics.Force.Y != 0) :
+                 #   VelocityY = cell.Dynamics.Force.Y
+
+                cell.UpdatePosition(VelocityX,VelocityY)
+                #cell.Dynamics.Velocity.X = VelocityX
+                #cell.Dynamics.Velocity.Y = VelocityY
+
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
