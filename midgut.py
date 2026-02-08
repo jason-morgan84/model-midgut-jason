@@ -22,14 +22,12 @@ import copy
 
 #TO DO:
 
+#0: Add random movement
 #1: Add adhesion
 ############1.1: Create function to relate adhesive power, distance and a linear variable to alter adhesion in an intuitive way
 ############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
 #2: Add data recording for analysis
-#3: Add collision detection
-############3.1: Find way to deal with cells that do end up overlapping
-############3.2: Find way to deal with cells that are moving at the same speed
 #4: Better define edges
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
