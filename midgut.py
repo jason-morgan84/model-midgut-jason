@@ -158,55 +158,81 @@ def Simulate(i):
     Cells.GenerateNodeNetwork(1)
     #first loop, work out where each cell wants to go
     for n,cell in enumerate(Cells):
+        AdhesionDistance = 0.2
+        MigrationForce = 0.00001
+        if cell.Type != "VM":
+            MaxMigrationForceX = 0
+            #Define forces due to speed limits
+            VelocityX = cell.Dynamics.Velocity.X
+            VelocityY = cell.Dynamics.Velocity.Y
+            VelocityMagnitude = math.hypot(VelocityY, VelocityX)
 
-        #Define forces due to speed limits
-        VelocityX = cell.Dynamics.Velocity.X
-        VelocityY = cell.Dynamics.Velocity.Y
-        VelocityMagnitude = math.hypot(VelocityY, VelocityX)
+            SpeedLimitForceX = 0
+            SpeedLimitForceY = 0
 
-        SpeedLimitForceX = 0
-        SpeedLimitForceY = 0
+            if VelocityMagnitude > SpeedLimit:
+                SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
+                VelocityUnitVectorX = VelocityX/VelocityMagnitude
+                VelocityUnitVectorY = VelocityY/VelocityMagnitude
+                SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
+                SpeedLimitForceY = -VelocityUnitVectorY * SpeedLimitForceMagnitude
 
-        if VelocityMagnitude > SpeedLimit:
-            SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
-            VelocityUnitVectorX = VelocityX/VelocityMagnitude
-            VelocityUnitVectorY = VelocityY/VelocityMagnitude
-            SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
-            SpeedLimitForceY = -VelocityUnitVectorY * SpeedLimitForceMagnitude
+            #Define forces due to proximity
+            MinimumDesiredGap = 0
+            PositionX = cell.Position.X
+            PositionY = cell.Position.Y
+            ProximityForceX = 0
+            ProximityForceY = 0
+            ProximityForceMagnitude = 0
+            for neighbour in cell.Neighbours:
+                NeighbourPositionX = Cells[neighbour].Position.X
+                NeighbourPositionY = Cells[neighbour].Position.Y
+                Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
+                Gap = Distance - cell.Morphology.Radius - Cells[neighbour].Morphology.Radius + 0.001
+                if Gap < MinimumDesiredGap:
+                    ProximityForceMagnitude = 0#abs((1/Distance))/100000
+                    DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
+                    DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
+                    ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
+                    ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
+            
 
-        #Define forces due to proximity
-        MinimumDesiredGap = 0.1
-        PositionX = cell.Position.X
-        PositionY = cell.Position.Y
-        ProximityForceX = 0
-        ProximityForceY = 0
-        ProximityForceMagnitude = 0
-        for neighbour in cell.Neighbours:
-            NeighbourPositionX = Cells[neighbour].Position.X
-            NeighbourPositionY = Cells[neighbour].Position.Y
-            Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
-            Gap = Distance - cell.Morphology.Radius - Cells[neighbour].Morphology.Radius
-            if Gap < MinimumDesiredGap:
-                ProximityForceMagnitude = abs((Gap/MinimumDesiredGap)/100)
-                DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
-                DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
-                ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
-                ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
+            VMAdjacent = False
+            #Forces due to signalling from VM
+            if cell.Type == "PMEC":
+                MaxMigrationForceX = 0
+                
+                for neighbour in cell.Neighbours:
+                    if Cells[neighbour].Type == "VM":
+                        VMAdjacent = True
+                        """VerticalDistance = cell.Position.X - Cells[neighbour].Position.X
+                        if (VerticalDistance) < AdhesionDistance:
+                            MigrationForceX = MigrationForce
+                        elif VerticalDistance < 2 * AdhesionDistance:
+                            MigrationForceX = 1 - (1/AdhesionDistance) * (VerticalDistance - AdhesionDistance)
+                        else:
+                            MigrationForceX = 0
+                        if MigrationForceX > MaxMigrationForceX: MaxMigrationForceX = MigrationForceX """
+
+
+            TotalForceX = SpeedLimitForceX + ProximityForceX + MaxMigrationForceX
+            TotalForceY = SpeedLimitForceY + ProximityForceY
+            if VMAdjacent == True and VelocityX<MigrationSpeed: TotalForceX+=0.01
+
+            AccelerationX = TotalForceX/(cell.Morphology.Radius**2)
+            AccelerationY = TotalForceY/(cell.Morphology.Radius**2)
+
+            VelocityX += AccelerationX * TickLength 
+            VelocityY += AccelerationY * TickLength 
+
+            cell.Dynamics.Velocity.X = VelocityX
+            cell.Dynamics.Velocity.Y = VelocityY
+
         
-        TotalForceX = SpeedLimitForceX + ProximityForceX
-        TotalForceY = SpeedLimitForceY + ProximityForceY
-
-        AccelerationX = TotalForceX/(cell.Morphology.Radius**2)
-        AccelerationY = TotalForceY/(cell.Morphology.Radius**2)
-        VelocityX += AccelerationX * TickLength 
-        VelocityY += AccelerationY * TickLength 
-
-        cell.Dynamics.Velocity.X = VelocityX
-        cell.Dynamics.Velocity.Y = VelocityY
 
     for n, cell in enumerate(Cells):
+        
         Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
-
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])

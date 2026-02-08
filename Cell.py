@@ -59,11 +59,11 @@ class CellTypes:
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
                 for n in range(position.Number):
                     if position.Arrange == 'XAlign':
-                        x_position = position.Position.X + 2 * position.Morphology.Radius* n +0.1
+                        x_position = position.Position.X + (2 * position.Morphology.Radius+0.1)* n
                         y_position = position.Position.Y
                     elif position.Arrange == 'YAlign':
                         x_position = position.Position.X
-                        y_position = position.Position.Y + 2 * position.Morphology.Radius * n    +0.1                    
+                        y_position = position.Position.Y + 2 * position.Morphology.Radius * n    + 0.1                    
 
                     NewCell=Cells(
                         ID = '-'.join((self.Name,position.ID,str(n))),
