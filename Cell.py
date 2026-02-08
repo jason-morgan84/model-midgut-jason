@@ -1,6 +1,7 @@
 import matplotlib.patches as mpatches
 import math
 import time
+import numpy as np
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -196,6 +197,36 @@ class CellList:
                     self.Cells_List[i].Neighbours.append(n)
       
 
+    def xCollision(self,CellID):
+        Cell1VelocityX = self[CellID].Dynamics.Velocity.X
+        Cell1X = self[CellID].Position.X + Cell1VelocityX
+        for neighbour in self.Cells_List[CellID].Neighbours:
+            MinimumDistance = self[CellID].Morphology.Radius + self[neighbour].Morphology.Radius
+            Cell2VelocityX = self[neighbour].Dynamics.Velocity.X
+            Cell2X = self[neighbour].Position.X + Cell2VelocityX
+            Distance = abs(Cell1X - Cell2X)
+
+            if Distance < MinimumDistance:
+
+                if Cell1VelocityX < 0 and Cell2VelocityX < 0 or Cell1VelocityX > 0 and Cell2VelocityX > 0:
+                    if np.random.random() <= 0.5:
+                        Cell1VelocityX = Cell2VelocityX
+                    else:
+                        Cell2VelocityX = Cell1VelocityX
+                elif Cell1VelocityX < 0 and Cell2VelocityX > 0 or Cell1VelocityX > 0 and Cell2VelocityX < 0:
+                    NewVelocity = Cell1VelocityX + Cell2VelocityX
+                    Cell1VelocityX = NewVelocity
+                    Cell2VelocityX = NewVelocity
+            
+            self[neighbour].Dynamics.Velocity.X = Cell2VelocityX
+        self[CellID].Dynamics.Velocity.X = Cell1VelocityX
+
+
+
+
+
+
+
     def Collision(self,CellID):
         Cell1VelocityX = self[CellID].Dynamics.Velocity.X
         Cell1VelocityY = self[CellID].Dynamics.Velocity.Y
@@ -203,6 +234,7 @@ class CellList:
         Cell1X = self[CellID].Position.X + Cell1VelocityX
         Cell1Y = self[CellID].Position.Y + Cell1VelocityY
 
+        CollidingWith = [] #get a list of cells involved in collisions, then calculate positions
         for neighbour in self.Cells_List[CellID].Neighbours:
 
             MinimumDistance = self[CellID].Morphology.Radius + self[neighbour].Morphology.Radius
@@ -238,6 +270,7 @@ class CellList:
                 PerpendicularY = Cell1VelocityY - ParallelY
                 self[CellID].Dynamics.Velocity.X = PerpendicularX
                 self[CellID].Dynamics.Velocity.Y = PerpendicularY
+            self.UpdatePosition(CellID)
 
                 
 
