@@ -101,7 +101,7 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                         Position = Cell.XY(1,7),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'Pack',
-                        DrawLimits = Cell.XY(21,14),
+                        DrawLimits = Cell.XY(21,15),
                         Density = 0.9)]))
 
 
