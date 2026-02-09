@@ -75,13 +75,13 @@ OverallCellTypes.append(Cell.CellTypes(Name = "VM",Format = Cell.Format(FillColo
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperVM",
-                        Position = Cell.XY(-1,17),
+                        Position = Cell.XY(-21,17),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 25),
                     Cell.StartingPosition(
                         ID = "LowerVM",
-                        Position = Cell.XY(-1,3),
+                        Position = Cell.XY(-21,3),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 25)]))
