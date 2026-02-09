@@ -22,13 +22,13 @@ import copy
 
 #TO DO:
 
-#0: Add random movement
-#1: Add adhesion
-############1.1: Create function to relate adhesive power, distance and a linear variable to alter adhesion in an intuitive way
-############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+#0: Adjust collision
+############0.1:For collision, is 1/distance best driver of repulsive forces? How would this act with regards to large cell radii?
+#1: Add random movement
+#2: Add adhesion
+############2.1: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
-#2: Add data recording for analysis
-#4: Better define edges
+#3: Add data recording for analysis
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
@@ -51,13 +51,6 @@ TickNumber = 1000
 #whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
 RealTime = True
 
-#Field properties
-#UpperBound=//
-#LowerBound=//
-#LeftBound=//
-#RightBound=//
-
-
 #####################################Cell Properties####################################
 #Define cell types and starting positions
 OverallCellTypes=[]
@@ -66,16 +59,16 @@ OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperPMEC",
-                        Position = Cell.XY(1,15),
+                        Position = Cell.XY(-20,15),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
-                        Number = 10),
+                        Number = 20),
                     Cell.StartingPosition(
                         ID = "LowerPMEC",
-                        Position = Cell.XY(1,5),
+                        Position = Cell.XY(-20,5),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
-                        Number = 10)]))
+                        Number = 20)]))
 
 OverallCellTypes.append(Cell.CellTypes(Name = "VM",Format = Cell.Format(FillColour = 'plum'),
                 StartingPosition = 
@@ -96,21 +89,19 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Other",
-                        Position = Cell.XY(1,7),
+                        Position = Cell.XY(-20,7),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'Pack',
                         DrawLimits = Cell.XY(21,15),
-                        Density = 0.9)]))
+                        Density = 0.95)]))
 
 
 TopBoundary = 14
 LowerBoundary = 1
-#Edge = mpatches.Rectangle((-1,0.75),50,13.75,fill = False,edgecolor='Plum',linewidth=5)
 
 #####################################Initialisation#####################################
 #define plot and axes
 figure, axes = plt.subplots()
-#axes.add_artist(Edge)
 
 #Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
 Cells=Cell.CellList()
@@ -144,29 +135,34 @@ SpeedLimit = 0.06
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
 
 
-
-#if cell is close, constrain speed
-#depending on power of adhesion, speed must be speed of cell +- x
-
-
-
 def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
     Cells.GenerateNodeNetwork(1)
-    #first loop, work out where each cell wants to go
+
+    AdhesionDistance = 0.5
+    AdhesionForce = 0.0005
+
+    MigrationForce = 0.0005
+
+    MinimumDesiredGap = 0.5
     for n,cell in enumerate(Cells):
-        AdhesionDistance = 0.2
-        MigrationForce = 0.00001
+
         if cell.Type != "VM":
-            MaxMigrationForceX = 0
             #Define forces due to speed limits
+            Radius = cell.Morphology.Radius
+
             VelocityX = cell.Dynamics.Velocity.X
             VelocityY = cell.Dynamics.Velocity.Y
             VelocityMagnitude = math.hypot(VelocityY, VelocityX)
 
+            AdhesionForceX = 0
+            AdhesionForceY = 0
+
             SpeedLimitForceX = 0
             SpeedLimitForceY = 0
+
+
 
             if VelocityMagnitude > SpeedLimit:
                 SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
@@ -175,50 +171,75 @@ def Simulate(i):
                 SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
                 SpeedLimitForceY = -VelocityUnitVectorY * SpeedLimitForceMagnitude
 
-            #Define forces due to proximity
-            MinimumDesiredGap = 0
+            # Define forces related to proximity to other cells
+            # These include:
+            ####    Repulsion due to overlap
+            ####    Attraction due to adhesion
+            ####    Signalling from neighbouring cells
+
             PositionX = cell.Position.X
             PositionY = cell.Position.Y
+
             ProximityForceX = 0
             ProximityForceY = 0
             ProximityForceMagnitude = 0
+
+            MigrationForceX = 0
+            VMAdjacent = False
             for neighbour in cell.Neighbours:
                 NeighbourPositionX = Cells[neighbour].Position.X
                 NeighbourPositionY = Cells[neighbour].Position.Y
                 Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
-                Gap = Distance - cell.Morphology.Radius - Cells[neighbour].Morphology.Radius + 0.001
+                Gap = Distance - Radius - Cells[neighbour].Morphology.Radius + 0.001
+
+                # Repulsive forces due to overlap
+                # If the distane between the cells is less than the minimum gap, increase repulsive force in opposite direction
+                # relative to 1/distance between the two cells
+
                 if Gap < MinimumDesiredGap:
-                    ProximityForceMagnitude = 0#abs((1/Distance))/100000
+                    ProximityForceMagnitude = abs((1/Distance))/100000 # This might still be a problem
                     DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
                     DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
                     ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
                     ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
-            
 
-            VMAdjacent = False
-            #Forces due to signalling from VM
-            if cell.Type == "PMEC":
-                MaxMigrationForceX = 0
-                
-                for neighbour in cell.Neighbours:
-                    if Cells[neighbour].Type == "VM":
-                        VMAdjacent = True
-                        """VerticalDistance = cell.Position.X - Cells[neighbour].Position.X
-                        if (VerticalDistance) < AdhesionDistance:
-                            MigrationForceX = MigrationForce
-                        elif VerticalDistance < 2 * AdhesionDistance:
-                            MigrationForceX = 1 - (1/AdhesionDistance) * (VerticalDistance - AdhesionDistance)
-                        else:
-                            MigrationForceX = 0
-                        if MigrationForceX > MaxMigrationForceX: MaxMigrationForceX = MigrationForceX """
+                # Attractive forces due to adhesion
+                # Peak at AdhesionDistance
+                if Gap <= AdhesionDistance * 2:
+                    DistanceDifference = abs(Gap - AdhesionDistance)
+                    AdhesionForceMagnitude = (1-(DistanceDifference/AdhesionDistance) ** 5) * AdhesionForce
+
+                    DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
+                    DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
+
+                    AdhesionForceX += DirectionUnitVectorX * AdhesionForceMagnitude
+                    AdhesionForceY += DirectionUnitVectorY * AdhesionForceMagnitude
+       
+
+                # Forces due to signalling from VM
+                # Checks if cell is a PMEC adjacent to (within adhesion distance) of VM. If it is, sets VMAdjacent to true
+                # If VMAdjacent is true and cell velocity is lower than migration speed, force in the x direction is increased       
+                if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
+                    Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
+                    VMAdjacent = True
+            if VMAdjacent==True and VelocityX < MigrationSpeed:
+                MigrationForceX = MigrationForce
+        
 
 
-            TotalForceX = SpeedLimitForceX + ProximityForceX + MaxMigrationForceX
-            TotalForceY = SpeedLimitForceY + ProximityForceY
-            if VMAdjacent == True and VelocityX<MigrationSpeed: TotalForceX+=0.01
 
-            AccelerationX = TotalForceX/(cell.Morphology.Radius**2)
-            AccelerationY = TotalForceY/(cell.Morphology.Radius**2)
+
+
+
+
+
+
+
+            TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX
+            TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY
+
+            AccelerationX = TotalForceX/(Radius**2)
+            AccelerationY = TotalForceY/(Radius**2)
 
             VelocityX += AccelerationX * TickLength 
             VelocityY += AccelerationY * TickLength 
