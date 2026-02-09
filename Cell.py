@@ -123,7 +123,7 @@ class Dynamics:
         self.AppliedForce = AppliedForce
 
 class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics,Neighbours):
+    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Neighbours):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #Class containing information about cells position, orientation. Also stores coords of vertices.

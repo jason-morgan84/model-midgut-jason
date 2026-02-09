@@ -30,7 +30,8 @@ import copy
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
 #3: Add data recording for analysis
 #5: Improvements to cell arrangement and packing density
-############5.1: Custom packing algorithm - allow ellipses
+############5.1: Custom packing algorithm for circles
+##########################5.1.1: Remember, circles are only acting as models for cells - no need for complexity provided by ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
 ############5.3: Custom packing for variably sized rectangles
