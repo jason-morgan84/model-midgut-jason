@@ -22,15 +22,13 @@ import copy
 
 #TO DO:
 
-#1: Add adhesion
-############1.1: Create function to relate adhesive power, distance and a linear variable to alter adhesion in an intuitive way
-############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+#0: Adjust collision
+############0.1:For collision, is 1/distance best driver of repulsive forces? How would this act with regards to large cell radii?
+#1: Add random movement
+#2: Add adhesion
+############2.1: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
-#2: Add data recording for analysis
-#3: Add collision detection
-############3.1: Find way to deal with cells that do end up overlapping
-############3.2: Find way to deal with cells that are moving at the same speed
-#4: Better define edges
+#3: Add data recording for analysis
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm - allow ellipses
 ############5.2: Finish "Fill" arrangement 
@@ -53,13 +51,6 @@ TickNumber = 1000
 #whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
 RealTime = True
 
-#Field properties
-#UpperBound=//
-#LowerBound=//
-#LeftBound=//
-#RightBound=//
-
-
 #####################################Cell Properties####################################
 #Define cell types and starting positions
 OverallCellTypes=[]
@@ -68,16 +59,16 @@ OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperPMEC",
-                        Position = Cell.XY(1,15),
+                        Position = Cell.XY(-20,15),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
-                        Number = 10),
+                        Number = 20),
                     Cell.StartingPosition(
                         ID = "LowerPMEC",
-                        Position = Cell.XY(1,5),
+                        Position = Cell.XY(-20,5),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
-                        Number = 10)]))
+                        Number = 20)]))
 
 OverallCellTypes.append(Cell.CellTypes(Name = "VM",Format = Cell.Format(FillColour = 'plum'),
                 StartingPosition = 
@@ -98,21 +89,19 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Other",
-                        Position = Cell.XY(1,7),
+                        Position = Cell.XY(-20,7),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'Pack',
                         DrawLimits = Cell.XY(21,15),
-                        Density = 1)]))
+                        Density = 0.95)]))
 
 
 TopBoundary = 14
 LowerBoundary = 1
-#Edge = mpatches.Rectangle((-1,0.75),50,13.75,fill = False,edgecolor='Plum',linewidth=5)
 
 #####################################Initialisation#####################################
 #define plot and axes
 figure, axes = plt.subplots()
-#axes.add_artist(Edge)
 
 #Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
 Cells=Cell.CellList()
@@ -131,6 +120,9 @@ Cells.GenerateNodeNetwork(1)
 
 #add timer
 timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='right')
+NCells = 0
+for cell in Cells:
+    NCells += 1
 
 
 #######################################Simulation#######################################
@@ -143,83 +135,123 @@ SpeedLimit = 0.06
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
 
 
-
-#if cell is close, constrain speed
-#depending on power of adhesion, speed must be speed of cell +- x
-
-
-
 def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
-    Cells.GenerateNodeNetwork(2)
-    NewVelocity=[]
-    #first loop, work out where each cell wants to go
+    Cells.GenerateNodeNetwork(1)
+
+    AdhesionDistance = 0.5
+    AdhesionForce = 0.0005
+
+    MigrationForce = 0.0005
+
+    MinimumDesiredGap = 0.5
     for n,cell in enumerate(Cells):
-        if cell.Type!="VM":
-            #if not leader cell
-            XVelocities = []
-            YVelocities = []
-            NNeighbours = len(cell.Neighbours)
-            MaxAdhesion = 0
+
+        if cell.Type != "VM":
+            #Define forces due to speed limits
+            Radius = cell.Morphology.Radius
+
+            VelocityX = cell.Dynamics.Velocity.X
+            VelocityY = cell.Dynamics.Velocity.Y
+            VelocityMagnitude = math.hypot(VelocityY, VelocityX)
+
+            AdhesionForceX = 0
+            AdhesionForceY = 0
+
+            SpeedLimitForceX = 0
+            SpeedLimitForceY = 0
+
+
+
+            if VelocityMagnitude > SpeedLimit:
+                SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
+                VelocityUnitVectorX = VelocityX/VelocityMagnitude
+                VelocityUnitVectorY = VelocityY/VelocityMagnitude
+                SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
+                SpeedLimitForceY = -VelocityUnitVectorY * SpeedLimitForceMagnitude
+
+            # Define forces related to proximity to other cells
+            # These include:
+            ####    Repulsion due to overlap
+            ####    Attraction due to adhesion
+            ####    Signalling from neighbouring cells
+
+            PositionX = cell.Position.X
+            PositionY = cell.Position.Y
+
+            ProximityForceX = 0
+            ProximityForceY = 0
+            ProximityForceMagnitude = 0
+
+            MigrationForceX = 0
+            VMAdjacent = False
             for neighbour in cell.Neighbours:
+                NeighbourPositionX = Cells[neighbour].Position.X
+                NeighbourPositionY = Cells[neighbour].Position.Y
+                Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
+                Gap = Distance - Radius - Cells[neighbour].Morphology.Radius + 0.001
 
-                Distance = (math.hypot(cell.Position.X - Cells[neighbour].Position.X,cell.Position.Y - Cells[neighbour].Position.Y) - Cells[neighbour].Morphology.Radius - cell.Morphology.Radius)
-                print(Distance)
-                #Function for freedom (ability of cell to move independently)
-                # Between 1 and 0
-                # A distance of 0 should give a Freedom of of 0
-                # As distance increases, Freedom should tend to 1
-                # Variable to define ~where Freedom should hit 1 in terms of multiples of cell radius - 1 radius, 2 radiuses etc
-                # Variable to define power of adhesion in intuitive way - ie, half the power of adhesion, double the freedom
-                
-                # Apply function to both speed limit and mean X speed (if Freedom is 1, XSpeed varies around 0, not MigrationSpeed)
-                # Need something for stickiness and for distance at which it has an effect
-                AdhesionDistance = 0.2
-                AdhesionPower = 1
-                FallOffDistance = 0.2 #How far beyond adhesion distance adhesion drops to 0
-                if Distance < AdhesionDistance:
-                    Adhesion = AdhesionPower
-                else:
-                    Adhesion = (1 - ((Distance - AdhesionDistance) / FallOffDistance) ** 5) * AdhesionPower
-#                    print(round(Distance,2),cell.Type,Cells[neighbour].Type,Adhesion)
-                if (cell.Type == "Other"): print(Adhesion)
-                if Adhesion < 0:
-                    Adhesion = 0
-                elif Adhesion > 1:
-                    Adhesion = 1
+                # Repulsive forces due to overlap
+                # If the distane between the cells is less than the minimum gap, increase repulsive force in opposite direction
+                # relative to 1/distance between the two cells
 
-                if Adhesion > MaxAdhesion: MaxAdhesion = Adhesion
-                XVelocities.append(Cells[neighbour].Dynamics.Velocity.X * Adhesion)
-                YVelocities.append(Cells[neighbour].Dynamics.Velocity.X * Adhesion)    
+                if Gap < MinimumDesiredGap:
+                    ProximityForceMagnitude = abs((1/Distance))/100000 # This might still be a problem
+                    DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
+                    DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
+                    ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
+                    ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
 
-            if NNeighbours > 1:
-                XVelocity = np.random.normal(sum(XVelocities)/NNeighbours, statistics.stdev(XVelocities)) + (1 - MaxAdhesion) * np.random.normal(0, SpeedLimit)
-                YVelocity = np.random.normal(sum(YVelocities)/NNeighbours, statistics.stdev(YVelocities)) + (1 - MaxAdhesion) * np.random.normal(0, SpeedLimit)
-            elif NNeighbours == 1:
-                XVelocity = np.random.normal(sum(XVelocities)/NNeighbours, 0.01) + (1 - MaxAdhesion) * np.random.normal(0, SpeedLimit)
-                YVelocity = np.random.normal(sum(YVelocities)/NNeighbours, 0.01) + (1 - MaxAdhesion) * np.random.normal(0, SpeedLimit)
-            else:
-                XVelocity = np.random.normal(0, SpeedLimit)
-                YVelocity = np.random.normal(0, SpeedLimit)
-        else:
-            XVelocity = MigrationSpeed
-            YVelocity = 0
-            if cell.Position.X > 49:
-                Cells[n].Position.X = -1
-        YVelocity = 0
-        NewVelocity.append(Cell.XY(XVelocity,YVelocity))
-    #second loop, move each cell
-    for n,cell in enumerate(Cells):
-        cell.Dynamics.Velocity.X=NewVelocity[n].X
-        cell.Dynamics.Velocity.Y=NewVelocity[n].Y       
-        if cell.Type!="VM":
-            if cell.Position.Y > 15: cell.Position.Y = 15
-            elif cell.Position.Y < 5: cell.Position.Y = 5
-            #Cells.Collision(n)
-            Cells.xCollision(n)
-        Cells.UpdatePosition(n)
+                # Attractive forces due to adhesion
+                # Peak at AdhesionDistance
+                if Gap <= AdhesionDistance * 2:
+                    DistanceDifference = abs(Gap - AdhesionDistance)
+                    AdhesionForceMagnitude = (1-(DistanceDifference/AdhesionDistance) ** 5) * AdhesionForce
 
+                    DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
+                    DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
+
+                    AdhesionForceX += DirectionUnitVectorX * AdhesionForceMagnitude
+                    AdhesionForceY += DirectionUnitVectorY * AdhesionForceMagnitude
+       
+
+                # Forces due to signalling from VM
+                # Checks if cell is a PMEC adjacent to (within adhesion distance) of VM. If it is, sets VMAdjacent to true
+                # If VMAdjacent is true and cell velocity is lower than migration speed, force in the x direction is increased       
+                if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
+                    Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
+                    VMAdjacent = True
+            if VMAdjacent==True and VelocityX < MigrationSpeed:
+                MigrationForceX = MigrationForce
+        
+
+
+
+
+
+
+
+
+
+
+            TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX
+            TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY
+
+            AccelerationX = TotalForceX/(Radius**2)
+            AccelerationY = TotalForceY/(Radius**2)
+
+            VelocityX += AccelerationX * TickLength 
+            VelocityY += AccelerationY * TickLength 
+
+            cell.Dynamics.Velocity.X = VelocityX
+            cell.Dynamics.Velocity.Y = VelocityY
+
+        
+
+    for n, cell in enumerate(Cells):
+        
+        Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])

@@ -46,7 +46,7 @@ import time
 scale = 1
 
 #tick length gives length of single tick in seconds
-TickLength = 5
+TickLength = 1
 
 #length of simulation in ticks
 TickNumber = 1000
@@ -71,14 +71,14 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Cell", Format = Cell.Format(FillC
                         ID = "Mover",
                         Position = Cell.XY(7,6.5),
                         Morphology = Cell.Morphology(Radius = 1)),
-                    Cell.StartingPosition(
-                        ID = "Mover2",
-                        Position = Cell.XY(9,10),
-                        Morphology = Cell.Morphology(Radius = 1)),
-                    Cell.StartingPosition(
-                        ID = "Mover3",
-                        Position = Cell.XY(12.5,10),
-                        Morphology = Cell.Morphology(Radius = 1)),
+                    #Cell.StartingPosition(
+                    #    ID = "Mover2",
+                    #    Position = Cell.XY(9,10),
+                     #   Morphology = Cell.Morphology(Radius = 1)),
+                    #Cell.StartingPosition(
+                    #    ID = "Mover3",
+                    #    Position = Cell.XY(12.5,10),
+                    #    Morphology = Cell.Morphology(Radius = 1)),
                     #Cell.StartingPosition(
                     #    ID = "Mover4",
                     #    Position = Cell.XY(8,2),
@@ -123,47 +123,76 @@ timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='rig
 
 
 #Cells[0].Dynamics.Velocity.Y=-0.02    
-Cells[0].Dynamics.Velocity.X=0.001
+Cells[0].Dynamics.Velocity.X=0.01
 #Cells[1].Dynamics.Velocity.Y=-0.05
 #Cells[1].Dynamics.Force.X=0.05  
 #Cells[2].Dynamics.Velocity.Y=-0.05   
 #Cells[2].Dynamics.Velocity.X=-0.05  
-Cells[3].Dynamics.Velocity.X=-0.001   
+Cells[1].Dynamics.Velocity.X=-0.01   
+Cells[1].Dynamics.Force.X=0.1 
 #Cells[3].Dynamics.Velocity.X=0.05  
 
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
 
+MigrationSpeed = 0.05#um/s
+SpeedLimit = 0.06
+
+
 def Simulate(i):
     ArtistList=[]
     OutputPositions=[]
-    Cells.GenerateNodeNetwork(1)
+    Cells.GenerateNodeNetwork(2)
+    #first loop, work out where each cell wants to go
     for n,cell in enumerate(Cells):
-        #print(n,cell.Neighbours)
-        #only append cell to artists list if it has forces applied to it or speed that would require redrawing
-        if cell.Dynamics.Velocity.AsList() != [0,0] or cell.Dynamics.Force.AsList() != [0,0]:
-                #Update velocities from speed - force gives a maximum speed (resistance to further acceleration is assumed at this point)
-                #Assuming consistent densities of cell, mass in 2D is proportional to radius squared
 
+        #Define forces due to speed limits
+        VelocityX = cell.Dynamics.Velocity.X
+        VelocityY = cell.Dynamics.Velocity.Y
+        VelocityMagnitude = math.hypot(VelocityY, VelocityX)
 
-                Cells.Collision(n)
-                VelocityX = cell.Dynamics.Velocity.X 
-                VelocityY = cell.Dynamics.Velocity.Y
+        SpeedLimitForceX = 0
+        SpeedLimitForceY = 0
 
-                #AccelerationX = cell.Dynamics.Force.X/cell.Morphology.Radius**2
-                #AccelerationY = cell.Dynamics.Force.Y/cell.Morphology.Radius**2
-                #VelocityX += AccelerationX
-                #if (abs(VelocityX) > abs(cell.Dynamics.Force.X)) and abs(cell.Dynamics.Force.X != 0) :
-                #    VelocityX = cell.Dynamics.Force.X
+        if VelocityMagnitude > SpeedLimit:
+            SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
+            VelocityUnitVectorX = VelocityX/VelocityMagnitude
+            VelocityUnitVectorY = VelocityY/VelocityMagnitude
+            SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
+            SpeedLimitForceY = -VelocityUnitVectorY * SpeedLimitForceMagnitude
 
-                #VelocityY += AccelerationY
+        #Define forces due to proximity
+        MinimumDesiredGap = 0.1
+        PositionX = cell.Position.X
+        PositionY = cell.Position.Y
+        ProximityForceX = 0
+        ProximityForceY = 0
+        ProximityForceMagnitude = 0
+        for neighbour in cell.Neighbours:
+            NeighbourPositionX = Cells[neighbour].Position.X
+            NeighbourPositionY = Cells[neighbour].Position.Y
+            Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
+            Gap = Distance - cell.Morphology.Radius - Cells[neighbour].Morphology.Radius
+            if Gap < MinimumDesiredGap:
+                ProximityForceMagnitude = abs((Gap/MinimumDesiredGap)/100)
+                DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
+                DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
+                ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
+                ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
+        
+        TotalForceX = SpeedLimitForceX + ProximityForceX
+        TotalForceY = SpeedLimitForceY + ProximityForceY
 
-                i#f (abs(VelocityY) > abs(cell.Dynamics.Force.Y)) and abs(cell.Dynamics.Force.Y != 0) :
-                 #   VelocityY = cell.Dynamics.Force.Y
+        AccelerationX = TotalForceX/(cell.Morphology.Radius**2)
+        AccelerationY = TotalForceY/(cell.Morphology.Radius**2)
+        VelocityX += AccelerationX * TickLength 
+        VelocityY += AccelerationY * TickLength 
 
-                cell.UpdatePosition(VelocityX,VelocityY)
-                #cell.Dynamics.Velocity.X = VelocityX
-                #cell.Dynamics.Velocity.Y = VelocityY
+        cell.Dynamics.Velocity.X = VelocityX
+        cell.Dynamics.Velocity.Y = VelocityY
+
+    for n, cell in enumerate(Cells):
+        Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
 
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
