@@ -6,8 +6,7 @@ import math as math
 import Cell
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import time
-import statistics
-import copy
+
 #Each cell is defined using it's shape (currently, ellipse or rectangle), its center point (using XY class) and 
 #its size (using XY class - full width and height, not radius). 
 # 
@@ -99,8 +98,6 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                         Density = 1)]))
 
 
-TopBoundary = 14
-LowerBoundary = 1
 
 #####################################Initialisation#####################################
 #define plot and axes
@@ -122,7 +119,7 @@ for cell in Cells:
 Cells.GenerateNodeNetwork(1)
 
 #add timer
-timer = axes.annotate("0s", xy=(20, 20), xytext=(40,17),horizontalalignment='right')
+timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right')
 NCells = 0
 for cell in Cells:
     NCells += 1
@@ -144,11 +141,11 @@ def Simulate(i):
     Cells.GenerateNodeNetwork(1)
 
     AdhesionDistance = 0.1
-    AdhesionForce = 0.005
+    AdhesionForce = 0.0005
 
     MigrationForce = 0.0005
 
-    MinimumDesiredGap = 0.5
+    MinimumDesiredGap = 0
     for n,cell in enumerate(Cells):
 
         if cell.Type != "VM":
@@ -312,7 +309,7 @@ if RealTime == True: figure.canvas.mpl_connect('pick_event', onpick1)
 axes.set_aspect( 1 )
 axes.set_axis_off()
 plt.xlim(0, 40)
-plt.ylim(0, 20)
+plt.ylim(0, 25)
 
 #add legend
 LegendPatches=[]
