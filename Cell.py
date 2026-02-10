@@ -59,11 +59,11 @@ class CellTypes:
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
                 for n in range(position.Number):
                     if position.Arrange == 'XAlign':
-                        x_position = position.Position.X + (2 * position.Morphology.Radius+0.1)* n
+                        x_position = position.Position.X + (2 * position.Morphology.Radius)* n
                         y_position = position.Position.Y
                     elif position.Arrange == 'YAlign':
                         x_position = position.Position.X
-                        y_position = position.Position.Y + 2 * position.Morphology.Radius * n    + 0.1                    
+                        y_position = position.Position.Y + 2 * position.Morphology.Radius * n                   
 
                     NewCell=Cells(
                         ID = '-'.join((self.Name,position.ID,str(n))),
@@ -186,7 +186,7 @@ class CellList:
             #for each cell, loop through all other cells from current cell + 1 and check to see if they interesect
             for i in range(n + 1, len(self.Cells_List), 1):
                 #Calculate distance between cells: distance between centres subtract the two radiuseses
-                Distance = math.sqrt((cell.Position.X-self.Cells_List[i].Position.X)**2 + (cell.Position.Y-self.Cells_List[i].Position.Y)**2)-cell.Morphology.Radius - self.Cells_List[i].Morphology.Radius
+                Distance = math.sqrt((cell.Position.X-self.Cells_List[i].Position.X)**2 + (cell.Position.Y-self.Cells_List[i].Position.Y)**2) - cell.Morphology.Radius - self.Cells_List[i].Morphology.Radius
                 #if polygon contains points, the regions intesersect; add each cell to the other cells network.
                 if (Distance < MaxNeighbourDistance):
                     cell.Neighbours.append(i)

@@ -24,10 +24,12 @@ import copy
 
 #0: Adjust collision
 ############0.1:For collision, is 1/distance best driver of repulsive forces? How would this act with regards to large cell radii?
-#1: Add random movement
-#2: Add adhesion
-############2.1: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+#1: Adjust adhesion
+############1.1: Increasing adhesion leads to cells pinging off 
+############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+#1: Add random movement
+
 #3: Add data recording for analysis
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm for circles
@@ -60,13 +62,13 @@ OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperPMEC",
-                        Position = Cell.XY(-20,15),
+                        Position = Cell.XY(-21,16),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 20),
                     Cell.StartingPosition(
                         ID = "LowerPMEC",
-                        Position = Cell.XY(-20,5),
+                        Position = Cell.XY(-21,5),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 20)]))
@@ -75,26 +77,26 @@ OverallCellTypes.append(Cell.CellTypes(Name = "VM",Format = Cell.Format(FillColo
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperVM",
-                        Position = Cell.XY(-21,17),
-                        Morphology = Cell.Morphology(Radius = 1),
+                        Position = Cell.XY(-21,17.5),
+                        Morphology = Cell.Morphology(Radius = 0.5),
                         Arrange = "XAlign",
-                        Number = 25),
+                        Number = 100),
                     Cell.StartingPosition(
                         ID = "LowerVM",
-                        Position = Cell.XY(-21,3),
-                        Morphology = Cell.Morphology(Radius = 1),
+                        Position = Cell.XY(-21,3.5),
+                        Morphology = Cell.Morphology(Radius = 0.5),
                         Arrange = "XAlign",
-                        Number = 25)]))
+                        Number = 100)]))
 
 OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Other",
-                        Position = Cell.XY(-20,7),
+                        Position = Cell.XY(-21,7),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'Pack',
-                        DrawLimits = Cell.XY(21,15),
-                        Density = 0.95)]))
+                        DrawLimits = Cell.XY(21,15.67),
+                        Density = 1)]))
 
 
 TopBoundary = 14
@@ -141,8 +143,8 @@ def Simulate(i):
     OutputPositions=[]
     Cells.GenerateNodeNetwork(1)
 
-    AdhesionDistance = 0.5
-    AdhesionForce = 0.0005
+    AdhesionDistance = 0.1
+    AdhesionForce = 0.005
 
     MigrationForce = 0.0005
 
@@ -191,8 +193,9 @@ def Simulate(i):
                 NeighbourPositionX = Cells[neighbour].Position.X
                 NeighbourPositionY = Cells[neighbour].Position.Y
                 Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
-                Gap = Distance - Radius - Cells[neighbour].Morphology.Radius + 0.001
+                Gap = Distance - Radius - Cells[neighbour].Morphology.Radius
 
+                # 
                 # Repulsive forces due to overlap
                 # If the distane between the cells is less than the minimum gap, increase repulsive force in opposite direction
                 # relative to 1/distance between the two cells
@@ -226,14 +229,6 @@ def Simulate(i):
             if VMAdjacent==True and VelocityX < MigrationSpeed:
                 MigrationForceX = MigrationForce
         
-
-
-
-
-
-
-
-
 
 
             TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX
