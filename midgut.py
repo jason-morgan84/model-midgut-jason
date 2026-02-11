@@ -7,14 +7,12 @@ import Cell
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import time
 
-#Each cell is defined using it's shape (currently, ellipse or rectangle), its center point (using XY class) and 
-#its size (using XY class - full width and height, not radius). 
+#Each cell is defined as a circle using its center point (using XY class) and radius (using XY class)
 # 
 #Characteristics of individual cells are stored in the Cells class and a list of all cells are maintained in the CellList class.
 #The CellList class allows adding ("CellList.AddCell(cell)") Cells class objects and iteration through cells.
 #
 #To draw cells using MatPlotLib, the Cells.Draw function returns a MatPlotLib artist
-#To analyse cells using Shapely, the Cells.GetCoords function returns a list of coords to use in a Shapely Polygon
 #
 #A list of cells neighbouring each cell can be generated using CellList.GetNodeNetwork
 
@@ -22,36 +20,24 @@ import time
 #TO DO:
 
 #0: Adjust collision
-############0.1:For collision, is 1/distance best driver of repulsive forces? How would this act with regards to large cell radii?
-#1: Adjust adhesion
-############1.1: Increasing adhesion leads to cells pinging off 
-############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
-##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+############0.1: As adhesion increases, there's still something odd about collisions - overlap from some angles, bouncing too much from others
+
 #1: Add random movement
 
-#3: Add data recording for analysis
+#2: Consider changes to adjacency at diagonals
+############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+
+#3: At end point recording to replays
+############3.1: Add simulation without replays, just giving end-point
+
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm for circles
 ##########################5.1.1: Remember, circles are only acting as models for cells - no need for complexity provided by ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
-############5.3: Custom packing for variably sized rectangles
-#6: Add randomisation
-#7: Consider whether all storage positions are required
 
 
-#define simulation details
-#scale variable defines size of 1 unit in um
-scale = 1
-
-#tick length gives length of single tick in seconds
-TickLength = 5
-
-#length of simulation in ticks
-TickNumber = 1000
-
-#whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
-RealTime = True
 
 #####################################Cell Properties####################################
 #Define cell types and starting positions
@@ -119,33 +105,65 @@ for cell in Cells:
 Cells.GenerateNodeNetwork(1)
 
 #add timer
-timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right')
+timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
 NCells = 0
 for cell in Cells:
-    NCells += 1
+    if cell.Type != "VM":
+        NCells += 1
 
 
 #######################################Simulation#######################################
-#Actions to carry out before simulation
+#Variables defining simulation
 
-MigrationSpeed = 0.05#um/s
-SpeedLimit = 0.06
+PlotWidth = 40 #Width of simulation plot in scale units
 
+#define simulation details
+#scale variable defines size of 1 unit in um
+Scale = 1
+
+#tick length gives length of single tick in seconds
+TickLength = 1
+
+#length of simulation in ticks
+TickNumber = 1000
+
+#whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
+RealTime = True
+
+#Variables defining speed of migration
+MigrationSpeed = 0.05 #um/Tick
+SpeedLimit = 0.06 #um/Tick
+
+AdhesionDistance = 0.1 #ScaleUnits
+AdhesionForce = 0.00005 #MassUnits.ScaleUnits.TickLength^-2
+
+MinimumDesiredGap = 0.05
+ProximityForce = 0.00005
+
+MigrationForce = 0.0005
+
+EndPointX = 0.5 #defines finish line for measuring in terms of width of simulation
+plt.axvline(x = EndPointX * PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
+
+global Finished 
+Finished = False
+global EndTime 
+EndTime = 0
+FinishProportion = 0.1
+counter = axes.annotate("0/"+str(int(round(NCells*FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
 #Simulation function - defines what to do on each tick of the simulation
 #If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
 
-
 def Simulate(i):
-    ArtistList=[]
-    OutputPositions=[]
+    global Finished
+    global EndTime
+    if RealTime == True:
+        ArtistList=[]
+    else:
+        OutputPositions=[]
+
     Cells.GenerateNodeNetwork(1)
 
-    AdhesionDistance = 0.1
-    AdhesionForce = 0.0005
-
-    MigrationForce = 0.0005
-
-    MinimumDesiredGap = 0
     for n,cell in enumerate(Cells):
 
         if cell.Type != "VM":
@@ -161,8 +179,6 @@ def Simulate(i):
 
             SpeedLimitForceX = 0
             SpeedLimitForceY = 0
-
-
 
             if VelocityMagnitude > SpeedLimit:
                 SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
@@ -192,29 +208,34 @@ def Simulate(i):
                 Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
                 Gap = Distance - Radius - Cells[neighbour].Morphology.Radius
 
-                # 
                 # Repulsive forces due to overlap
                 # If the distane between the cells is less than the minimum gap, increase repulsive force in opposite direction
-                # relative to 1/distance between the two cells
+                # Once the gap is less than MinimumDesiredGap, the repulsive force increases gradually from 0 in a parabola
+                # centred on MinimumDesiredGap, reaching 1 when Gap is 0 and continuing to increase as any overlap increases
 
                 if Gap < MinimumDesiredGap:
-                    ProximityForceMagnitude = abs((1/Distance))/100000 # This might still be a problem
+          
+                    ProximityForceMagnitude = (((1/MinimumDesiredGap) ** 2) * (Gap - 1) ** 2) * ProximityForce
                     DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
                     DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
                     ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
                     ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
 
                 # Attractive forces due to adhesion
-                # Peak at AdhesionDistance
+                # These are felt as soon as AdhesionDistance * 2 is reached. Attractive forces are at a maximum at 
+                # AdhesionDistance * 2, decrease to 0 as Gap approaches AdhesionDistance and are 0 below AdhesionDistance.
                 if Gap <= AdhesionDistance * 2:
-                    DistanceDifference = abs(Gap - AdhesionDistance)
-                    AdhesionForceMagnitude = (1-(DistanceDifference/AdhesionDistance) ** 5) * AdhesionForce
+                    if Gap >= AdhesionDistance:
+                        AdhesionForceMagnitude = ((Gap/AdhesionDistance) ** 3) * AdhesionForce
+                    elif Gap < AdhesionDistance:
+                        AdhesionForceMagnitude = 0
+
 
                     DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
                     DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
 
-                    AdhesionForceX += DirectionUnitVectorX * AdhesionForceMagnitude
-                    AdhesionForceY += DirectionUnitVectorY * AdhesionForceMagnitude
+                    AdhesionForceX += -DirectionUnitVectorX * AdhesionForceMagnitude
+                    AdhesionForceY += -DirectionUnitVectorY * AdhesionForceMagnitude
        
 
                 # Forces due to signalling from VM
@@ -223,10 +244,10 @@ def Simulate(i):
                 if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
                     Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
                     VMAdjacent = True
+
             if VMAdjacent==True and VelocityX < MigrationSpeed:
                 MigrationForceX = MigrationForce
         
-
 
             TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX
             TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY
@@ -239,19 +260,36 @@ def Simulate(i):
 
             cell.Dynamics.Velocity.X = VelocityX
             cell.Dynamics.Velocity.Y = VelocityY
+    
 
         
-
+    FinishedCells = 0
     for n, cell in enumerate(Cells):
         
         Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if RealTime == True: ArtistList.append(cell.artist)
         if RealTime == False:
             OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
+        if cell.Position.X > (PlotWidth * EndPointX) and cell.Type != "VM":
+            FinishedCells += 1
+    
+    #update timer if migration isn't complete
+    if FinishedCells >= NCells * FinishProportion and Finished == False:
+        Finished = True
+        EndTime = i * TickLength
+    
+    if Finished == False:
+        timer.set_text(str(i * TickLength) + "s")
+    else:
+        timer.set_text(str(EndTime) + "s")
+        timer.set_color('r')
 
-    #update timer
-    timer.set_text(str(i*5)+"s")
+    counter.set_text(str(FinishedCells)+"/"+str(int(round(NCells*FinishProportion))))
+    
+
     ArtistList.append(timer)
+    ArtistList.append(counter)
+
     return tuple(ArtistList) if RealTime == True else OutputPositions
 
 
@@ -270,7 +308,7 @@ def Replay(i):
 #If not running in real time, runs the simulation through and saves position of each cell at each tick, the draws animation based
 #on this saved data
 if RealTime == True:
-    ani = animation.FuncAnimation(figure, Simulate, frames=TickNumber, interval=40, blit=True,repeat=False)
+    ani = animation.FuncAnimation(figure, func = Simulate, frames=TickNumber, interval=40, blit=True,repeat=False)
     pass
 elif RealTime == False:
     RecordedPositions=[]
@@ -308,7 +346,7 @@ if RealTime == True: figure.canvas.mpl_connect('pick_event', onpick1)
 #plot characteristics
 axes.set_aspect( 1 )
 axes.set_axis_off()
-plt.xlim(0, 40)
+plt.xlim(0, PlotWidth)
 plt.ylim(0, 25)
 
 #add legend
@@ -319,7 +357,7 @@ plt.legend(handles=LegendPatches, bbox_to_anchor=(0.19, 1.1))
 
 #add scalebar
 scalebar = AnchoredSizeBar(axes.transData,
-                           10*scale, str(scale*10) +'um', loc = 'lower right', 
+                           10*Scale, str(Scale*10) +'um', loc = 'lower right', 
                            color='grey',
                            frameon=False,
                            size_vertical=1,
