@@ -154,8 +154,8 @@ class Cells:
 
 
     def SetPosition(self,X,Y):
-        self.Position.Position.X = X
-        self.Position.Position.Y = Y
+        self.Position.X = X
+        self.Position.Y = Y
  
         self.artist.center = self.Position.AsList()
 

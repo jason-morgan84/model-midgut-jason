@@ -28,15 +28,13 @@ import time
 ############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
 ##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
 
-#3: At end point recording to replays
-############3.1: Add simulation without replays, just giving end-point
-
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm for circles
 ##########################5.1.1: Remember, circles are only acting as models for cells - no need for complexity provided by ellipses
 ############5.2: Finish "Fill" arrangement 
 ############5.3: Random variation in cell size
 
+#6: Why do RealTime simulations give different results to Replays and Reports
 
 
 #####################################Cell Properties####################################
@@ -127,8 +125,10 @@ TickLength = 1
 #length of simulation in ticks
 TickNumber = 1000
 
-#whether to simulate then replay (smoother) or run in realtime (slower and jerkier - for testing)
-RealTime = True
+# Whether to run simulation in real time ("RealTime"),
+# simulate then replay ("Replay")
+# or simulate and report results ("Report")
+SimulationType = "Replay"
 
 #Variables defining speed of migration
 MigrationSpeed = 0.05 #um/Tick
@@ -147,8 +147,10 @@ plt.axvline(x = EndPointX * PlotWidth, color = 'lightcoral', alpha = 0.5, linewi
 
 global Finished 
 Finished = False
+
 global EndTime 
 EndTime = 0
+
 FinishProportion = 0.1
 counter = axes.annotate("0/"+str(int(round(NCells*FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
 #Simulation function - defines what to do on each tick of the simulation
@@ -157,10 +159,12 @@ counter = axes.annotate("0/"+str(int(round(NCells*FinishProportion,0))), xy=(20,
 def Simulate(i):
     global Finished
     global EndTime
-    if RealTime == True:
+    if SimulationType == "RealTime":
         ArtistList=[]
-    else:
+    elif SimulationType == "Replay":
         OutputPositions=[]
+    else:
+        ArtistList=[]
 
     Cells.GenerateNodeNetwork(1)
 
@@ -260,16 +264,19 @@ def Simulate(i):
 
             cell.Dynamics.Velocity.X = VelocityX
             cell.Dynamics.Velocity.Y = VelocityY
-    
-
-        
+            
     FinishedCells = 0
     for n, cell in enumerate(Cells):
         
         Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
-        if RealTime == True: ArtistList.append(cell.artist)
-        if RealTime == False:
-            OutputPositions.append([cell.Position.Position.X,cell.Position.Position.Y])
+        if SimulationType == "RealTime": 
+            ArtistList.append(cell.artist)
+        elif SimulationType == "Replay":
+            OutputPositions.append([cell.Position.X,cell.Position.Y])
+        else:
+            ArtistList.append(cell.artist)
+
+
         if cell.Position.X > (PlotWidth * EndPointX) and cell.Type != "VM":
             FinishedCells += 1
     
@@ -287,10 +294,13 @@ def Simulate(i):
     counter.set_text(str(FinishedCells)+"/"+str(int(round(NCells*FinishProportion))))
     
 
-    ArtistList.append(timer)
-    ArtistList.append(counter)
-
-    return tuple(ArtistList) if RealTime == True else OutputPositions
+    if SimulationType == "RealTime":
+        ArtistList.append(timer)
+        ArtistList.append(counter)
+        return tuple(ArtistList)
+    
+    elif SimulationType == "Replay":
+        return OutputPositions
 
 
 #########################################Replay#########################################
@@ -300,22 +310,34 @@ def Replay(i):
     for n, CellPosition in enumerate(RecordedPositions[i]):
         Cells[n].SetPosition(CellPosition[0],CellPosition[1])
         ArtistList.append(Cells[n].artist)
-    time.set_text(str(i*5)+"s")
-    ArtistList.append(time)
+    timer.set_text(str(i*TickLength)+"s")
+    ArtistList.append(timer)
     return tuple(ArtistList)
 
 #If running in real time, runs simulation and updates output plots
 #If not running in real time, runs the simulation through and saves position of each cell at each tick, the draws animation based
 #on this saved data
-if RealTime == True:
+if SimulationType == "RealTime":
     ani = animation.FuncAnimation(figure, func = Simulate, frames=TickNumber, interval=40, blit=True,repeat=False)
-    pass
-elif RealTime == False:
+
+elif SimulationType == "Replay":
     RecordedPositions=[]
     for tick in range(TickNumber):
-        NewPosition = Simulate(tick)
-        RecordedPositions.append(NewPosition)
-    ani = animation.FuncAnimation(figure, Replay, frames=TickNumber, interval=10, blit=True, repeat=False)
+        if Finished == False:
+            NewPosition = Simulate(tick)
+            RecordedPositions.append(NewPosition)
+        else:
+            break
+    ani = animation.FuncAnimation(figure, Replay, frames=len(RecordedPositions), interval=10, blit=True, repeat=False)
+
+elif SimulationType == "Report":
+    for tick in range(TickNumber):
+        if Finished == False:
+            Simulate(tick)
+        else:
+            print(str(FinishProportion*100)+"% of cells covered "+str(EndPointX * PlotWidth)+"uM in " + str(EndTime) + "s")
+            break
+
     
 
 
@@ -338,7 +360,7 @@ def onpick1(event):
     else:
         for cell in Cells:
             cell.artist.set_edgecolor('black')
-if RealTime == True: figure.canvas.mpl_connect('pick_event', onpick1)
+if SimulationType == "Real Time": figure.canvas.mpl_connect('pick_event', onpick1)
 
 
 
