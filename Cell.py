@@ -53,7 +53,7 @@ class CellTypes:
                                 Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
-                                Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
+                                Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0)),
                                 Neighbours=[])    
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
@@ -71,7 +71,7 @@ class CellTypes:
                         Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
-                        Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
+                        Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0)),
                         Neighbours=[])
                     #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
@@ -84,7 +84,7 @@ class CellTypes:
                     Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
                     Format = self.Format,
-                    Dynamics = Dynamics(Velocity = XY(0,0), Force = XY(0,0), AppliedForce = XY(0,0)),
+                    Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0)),
                     Neighbours=[])
                 OutputCellList.append(NewCell)
         return OutputCellList
@@ -117,10 +117,16 @@ class Format:
         self.LineWidth = LineWidth
 
 class Dynamics:
-    def __init__(self, Velocity=[0,0], Force = [0,0], AppliedForce=[0,0]):
-        self.Velocity=Velocity
-        self.Force = Force
+    # This class defines the forces applied to a cell leading to a given Velocity.
+    # Each is defined as an XY class giving an x-component and y-component of each vector.
+    # Cells experience applied forces from their neighbours and environment (applied force)
+    # and an internal force caused by the cells own activities.
+    # These forces generate acceleration (in proportion to the cells radius (and density, but currently this is assumed to be constant between cells))
+    # and this acceleration leads to a change in Velocity, also stored as a vector in xy component form.
+    def __init__(self, AppliedForce=XY(0,0), InternalForce = XY(0,0), Velocity=XY(0,0)):
         self.AppliedForce = AppliedForce
+        self.InternalForce = InternalForce
+        self.Velocity=Velocity
 
 class Cells:
     def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Neighbours):

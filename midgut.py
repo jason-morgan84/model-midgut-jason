@@ -19,11 +19,9 @@ import time
 
 #TO DO:
 
-#1: Add random movement
-
 #2: Consider changes to adjacency at diagonals
-############1.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
-##########################1.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+############2.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+##########################2.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
 
 #5: Improvements to cell arrangement and packing density
 ############5.1: Custom packing algorithm for circles
@@ -32,6 +30,10 @@ import time
 ############5.3: Random variation in cell size
 
 #6: Why do RealTime simulations give different results to Replays and Reports
+
+#7: See if its possible to streamline the InitialiseCell function
+
+#9: Separate forces in simulation to separate functions
 
 
 #####################################Cell Properties####################################
@@ -78,6 +80,12 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                         DrawLimits = Cell.XY(21,15.67),
                         Density = 1)]))
 
+""" OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
+                StartingPosition = 
+                    [Cell.StartingPosition(
+                        ID = "Other",
+                        Position = Cell.XY(11,7),
+                        Morphology = Cell.Morphology(Radius = 1))])) """
 
 #####################################Initialisation#####################################
 #define plot and axes
@@ -130,13 +138,28 @@ SimulationType = "RealTime"
 MigrationSpeed = 0.05 #um/Tick
 SpeedLimit = 0.06 #um/Tick
 
+# AdhesionDistance defines desired separation distance of two stably adhered cells.
+# Below AdhesionDistance, no adhesive force is felt.
+# AdhesionForceDistance defines the maximum distance at which an attractive force is felt.
+# Above AdhesionForceDistance, no attractive force is felt.
+# At AdhesionForceDistance, a maximum attractive force is felt.
+# This maximum attractive force is defined by AdhesionForce.
+# As the gap between the cells decreases from AdhesionForceDistance to AdhesionDistance, attractive force decreases to 0
+# According to the formula Force = AdhesionForce * (Gap/AdhesionForceDistance)^3
+
 AdhesionDistance = 0.05 #ScaleUnits
-AdhesionForce = 0.01 #MassUnits.ScaleUnits.TickLength^-2
+AdhesionForceDistance = AdhesionDistance * 3
+AdhesionForce = 0.1 #MassUnits.ScaleUnits.TickLength^-2
 
 MinimumDesiredGap = 0.05
 ProximityForce = 0.00005
 
+
+# Forces for internal forces
+# Define maximum force and directionality (tendency of a cell to maintain its desired direction rather than move randomly)
 MigrationForce = 0.05
+InternalForce = 0.005
+Directionality = 0
 
 #Define variables for defining and recording simulation end point
 EndPointX = 0.5 #defines finish line for measuring in terms of width of simulation
@@ -222,18 +245,9 @@ def Simulate(i):
                     ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
 
                 # Attractive forces due to adhesion
-                # These are felt as soon as AdhesionDistance * 2 is reached. Attractive forces are at a maximum at 
-                # AdhesionDistance * 2, decrease to 0 as Gap approaches AdhesionDistance and are 0 below AdhesionDistance.
-
-                # AdhesionDistance defines desired separation distance of two stably adhered cells.
-                # Below AdhesionDistance, no adhesive force is felt.
-                # AdhesionForceDistance defines the maximum distance at which an attractive force is felt
-                # At AdhesionForceDistance, a maximum attractive force is felt
-                # Above AdhesionForceDistance, no attractive force is felt
-                # As the gap between the cells decreases from AdhesionForceDistance to AdhesionDistance, attractive force decreases to 0
-                
-                AdhesionForceDistance = AdhesionDistance * 3
-                
+                # These are felt as soon as AdhesionForceDistance is reached. Attractive forces are at a maximum at 
+                # AdhesionForceDistance, decrease to 0 as Gap approaches AdhesionDistance and are 0 below AdhesionDistance.
+               
                 if Gap <= AdhesionForceDistance:
                     if Gap >= AdhesionDistance:
                         AdhesionForceMagnitude = ((Gap/(AdhesionForceDistance)) ** 3) * AdhesionForce
@@ -248,6 +262,10 @@ def Simulate(i):
                     AdhesionForceY += DirectionUnitVectorY * AdhesionForceMagnitude
        
 
+                
+
+
+
                 # Forces due to signalling from VM
                 # Checks if cell is a PMEC adjacent to (within adhesion distance) of VM. If it is, sets VMAdjacent to true
                 # If VMAdjacent is true and cell velocity is lower than migration speed, force in the x direction is increased       
@@ -255,12 +273,37 @@ def Simulate(i):
                     Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
                     VMAdjacent = True
 
+            # Cell intrinsic forces
+            # If maximum internal force (InternalForce) is not 0 and there is no internal force on the cell
+            # A random force (between 0 and InternalForce) is applied to the cell in a random direction.
+            # If the cell is already experiencing an InternalForce, a new direction and random magnitude is chosen
+            # The direction is constrained by directionality:
+            # If directionality is 1, the force will be in the same direction.
+            # If directionality is 0, the force will be in a random direction.
+            # If directionality is 0.5, the force will be within 90 degrees of the current force direction.
+            InternalForceX = cell.Dynamics.InternalForce.X
+            InternalForceY = cell.Dynamics.InternalForce.Y
+
+            if InternalForceX == 0 and InternalForceY == 0 and InternalForce != 0:
+                InternalForceDirection = np.random.random() * 2 * math.pi
+                InternalForceMagnitude = np.random.random() * InternalForce
+            elif InternalForce != 0:
+                InternalForceDirection = math.atan2(InternalForceX,InternalForceY)
+                InternalForceDirection += (np.random.random() - 0.5 ) * 2 * math.pi * (1 - Directionality)
+                InternalForceMagnitude = np.random.random() * InternalForce
+
+            InternalForceX = InternalForceMagnitude * math.cos(InternalForceDirection)
+            InternalForceY = InternalForceMagnitude * math.sin(InternalForceDirection)
+
+
+
+
             if VMAdjacent==True and VelocityX < MigrationSpeed:
                 MigrationForceX = MigrationForce
         
 
-            TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX
-            TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY
+            TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
+            TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY + InternalForceY
 
             AccelerationX = TotalForceX/(Radius**2)
             AccelerationY = TotalForceY/(Radius**2)
@@ -270,6 +313,9 @@ def Simulate(i):
 
             cell.Dynamics.Velocity.X = VelocityX
             cell.Dynamics.Velocity.Y = VelocityY
+
+            cell.Dynamics.InternalForce.X = InternalForceX
+            cell.Dynamics.InternalForce.Y = InternalForceY
             
     FinishedCells = 0
     for n, cell in enumerate(Cells):
