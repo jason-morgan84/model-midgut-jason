@@ -1,13 +1,15 @@
 import math
 import numpy as np
-import main
+import SimulationVariables
 
 def Drag(VelocityX, VelocityY):
-
+    # Simple implementation of drag to avoid infinitely increasing speeds due to applied forces.
+    # If the speed is above the defined limit (SpeedLimit) a force is applied in the opposite direction to limit the velocity
+    # to the speed limit.
     VelocityMagnitude = math.hypot(VelocityY, VelocityX)
 
-    if VelocityMagnitude > main.SpeedLimit:
-        SpeedLimitForceMagnitude = VelocityMagnitude - main.SpeedLimit
+    if VelocityMagnitude > SimulationVariables.SpeedLimit:
+        SpeedLimitForceMagnitude = VelocityMagnitude - SimulationVariables.SpeedLimit
         VelocityUnitVectorX = VelocityX/VelocityMagnitude
         VelocityUnitVectorY = VelocityY/VelocityMagnitude
         SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
@@ -27,8 +29,8 @@ def Proximity(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     Distance = math.hypot(Cell2Position.Y - Cell1Position.Y, Cell2Position.X - Cell1Position.X)
     Gap = Distance - Cell1Radius - Cell2Radius
 
-    if Gap < main.MinimumDesiredGap:
-        ProximityForceMagnitude = (((1/main.MinimumDesiredGap) ** 2) * (Gap - 1) ** 2) * main.ProximityForce
+    if Gap < SimulationVariables.MinimumDesiredGap:
+        ProximityForceMagnitude = (((1/SimulationVariables.MinimumDesiredGap) ** 2) * (Gap - 1) ** 2) * SimulationVariables.ProximityForce
         DirectionUnitVectorX = (Cell2Position.X - Cell1Position.X) / Distance
         DirectionUnitVectorY = (Cell2Position.Y - Cell1Position.Y) / Distance
         ProximityForceX = -DirectionUnitVectorX * ProximityForceMagnitude
@@ -55,10 +57,10 @@ def Adhesion(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     Distance = math.hypot(Cell2Position.Y - Cell1Position.Y, Cell2Position.X - Cell1Position.X)
     Gap = Distance - Cell1Radius - Cell2Radius
 
-    if Gap <= main.AdhesionForceDistance:
-        if Gap >= main.AdhesionDistance:
-            AdhesionForceMagnitude = ((Gap/(main.AdhesionForceDistance)) ** 3) * main.AdhesionForce
-        elif Gap < main.AdhesionDistance:
+    if Gap <= SimulationVariables.AdhesionForceDistance:
+        if Gap >= SimulationVariables.AdhesionDistance:
+            AdhesionForceMagnitude = ((Gap/(SimulationVariables.AdhesionForceDistance)) ** 3) * SimulationVariables.AdhesionForce
+        elif Gap < SimulationVariables.AdhesionDistance:
             AdhesionForceMagnitude = 0
 
         DirectionUnitVectorX = (Cell2Position.X - Cell1Position.X) / Distance
@@ -92,13 +94,13 @@ def IntrinsicForces(InternalForceVector):
     # If directionality is 0, the force will be in a random direction.
     # If directionality is 0.5, the force will be within 90 degrees of the current force direction.
 
-    if InternalForceVector.X == 0 and InternalForceVector.Y == 0 and main.InternalForceMultiplier != 0:
+    if InternalForceVector.X == 0 and InternalForceVector.Y == 0 and SimulationVariables.InternalForce != 0:
         InternalForceDirection = np.random.random() * 2 * math.pi
-        InternalForceMagnitude = np.random.random() * main.InternalForceMultiplier
-    elif main.InternalForceMultiplier != 0:
+        InternalForceMagnitude = np.random.random() * SimulationVariables.InternalForce
+    elif SimulationVariables.InternalForce != 0:
         InternalForceDirection = math.atan2(InternalForceVector.X,InternalForceVector.Y)
-        InternalForceDirection += (np.random.random() - 0.5 ) * 2 * math.pi * (1 - main.Directionality)
-        InternalForceMagnitude = np.random.random() * main.InternalForceMultiplier
+        InternalForceDirection += (np.random.random() - 0.5 ) * 2 * math.pi * (1 - SimulationVariables.Directionality)
+        InternalForceMagnitude = np.random.random() * SimulationVariables.InternalForce
     else:
         InternalForceMagnitude = 0
         InternalForceDirection = 0
@@ -153,8 +155,8 @@ def UpdateForces(Cells):
             #update forces due to neighbouring cell types
             for item in AdjacentCellType or []:
                 if item == "VM":
-                    if VelocityX < main.MigrationSpeed:
-                        MigrationForceX = main.MigrationForce   
+                    if CellVelocityX < SimulationVariables.MigrationSpeed:
+                        MigrationForceX = SimulationVariables.MigrationForce   
 
             #sum x and y force components
             TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
@@ -165,12 +167,12 @@ def UpdateForces(Cells):
             AccelerationY = TotalForceY/(CellRadius**2)
 
             #increments cell velocity components based on acceleration and TickLength (in us)
-            VelocityX += AccelerationX * main.TickLength 
-            VelocityY += AccelerationY * main.TickLength 
+            CellVelocityX += AccelerationX * SimulationVariables.TickLength 
+            CellVelocityY += AccelerationY * SimulationVariables.TickLength 
 
             #sets new values of velocity components for each cell
-            cell.Dynamics.Velocity.X = VelocityX
-            cell.Dynamics.Velocity.Y = VelocityY
+            cell.Dynamics.Velocity.X = CellVelocityX
+            cell.Dynamics.Velocity.Y = CellVelocityY
 
             #sets new cell internal forces
             cell.Dynamics.InternalForce.X = InternalForceX
