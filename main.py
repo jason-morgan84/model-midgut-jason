@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 import math as math
 import Cell, CellDynamics
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-import time
+
 
 #Each cell is defined as a circle using its center point (using XY class) and radius (using XY class)
 # 
@@ -18,6 +18,8 @@ import time
 
 
 #TO DO:
+
+#1: Add method for measuring results of interest
 
 #2: Consider changes to adjacency at diagonals
 ############2.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
@@ -106,157 +108,96 @@ for cell in Cells:
 #get network of neighbouring cells
 Cells.GenerateNodeNetwork(1)
 
-#add timer
-timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
+#Counts number of cells
 NCells = 0
 for cell in Cells:
     if cell.Type != "VM":
         NCells += 1
 
 
-#######################################Simulation#######################################
-#Variables defining simulation
-
-PlotWidth = 40 #Width of simulation plot in scale units
-
-#define simulation details
-#scale variable defines size of 1 unit in um
-Scale = 1
-
-#tick length gives length of single tick in seconds
-TickLength = 1
-
-#length of simulation in ticks
-TickNumber = 1000
-
-# Whether to run simulation in real time ("RealTime"),
-# simulate then replay ("Replay")
-# or simulate and report results ("Report")
-SimulationType = "RealTime"
+#######################################Key Simulation Variables#######################################
+PlotWidth = 40                  #   Width of simulation in plot units
+Scale = 1                       #   Size of 1 plot unit in um
+TickLength = 1                  #   Length of simulation tick in seconds
+TickNumber = 1000               #   Length of simulation in ticks
+SpeedLimit = 0.06               #   Maximum allowed speed of cells (plot unit/tick)
+SimulationType = "RealTime"     #   Simulate in real time ("RealTime"), simulate then replay ("Replay") or just report results ("Report")
 
 #Variables defining speed of migration
-MigrationSpeed = 0.05 #um/Tick
-SpeedLimit = 0.06 #um/Tick
+MigrationSpeed = 0.05           #   Speed of migrating cells (plot unit/tick)
+MigrationForce = 0.05           #   Force applied to a migrating cell
 
-# AdhesionDistance defines desired separation distance of two stably adhered cells.
-# Below AdhesionDistance, no adhesive force is felt.
-# AdhesionForceDistance defines the maximum distance at which an attractive force is felt.
-# Above AdhesionForceDistance, no attractive force is felt.
-# At AdhesionForceDistance, a maximum attractive force is felt.
-# This maximum attractive force is defined by AdhesionForce.
-# As the gap between the cells decreases from AdhesionForceDistance to AdhesionDistance, attractive force decreases to 0
-# According to the formula Force = AdhesionForce * (Gap/AdhesionForceDistance)^3
+#Variables defining adhesion
+AdhesionDistance = 0.05         #   Distance of two adhered cells (plot unit)
+AdhesionForceDistance = AdhesionDistance * 3    #   Maximum distance beyond cell boundary that adhesion forces are felt
+AdhesionForce = 0.1             #   Maximum force adhesion applies to neighbouring cells (MassUnits.ScaleUnits.TickLength^-2)
 
-AdhesionDistance = 0.05 #ScaleUnits
-AdhesionForceDistance = AdhesionDistance * 3
-AdhesionForce = 0.1 #MassUnits.ScaleUnits.TickLength^-2
+#Variables defining repulsion (collision avoidance)
+MinimumDesiredGap = 0.05        #   Minimum desired gap between cells (gaps can be smaller than this, but repulsive force will increase)
+ProximityForce = 0.00005        #   Maximum repulsive force on cells
 
-MinimumDesiredGap = 0.05
-ProximityForce = 0.00005
+# Variables for cell intrinsic forces (the force a cell applies to itself to go where it 'wants' to go)
+InternalForce = 0.005           #   Maximum force a cell can apply to itself
+Directionality = 0              #   Tendency of a cell to maintain a specific direction (1 - straight line, 0 - random direction)
+
+#Variables that define  simulation end point
+EndPointX = 0.5                 #   Defines 'finish line' in terms of width of simulation
+FinishProportion = 0.1          #   Proportion of cells to have passed EndPointX for simulation to be considered over
 
 
-# Forces for internal forces
-# Define maximum force and directionality (tendency of a cell to maintain its desired direction rather than move randomly)
-MigrationForce = 0.05
-InternalForce = 0.005
-Directionality = 0
+####################################Plot properties#####################################
+#plot characteristics
+axes.set_aspect( 1 )
+axes.set_axis_off()
+plt.xlim(0, PlotWidth)
+plt.ylim(0, 25)
+#plt.title( 'Drosophila Embryonic Midgut' )
 
-#Define variables for defining and recording simulation end point
-EndPointX = 0.5 #defines finish line for measuring in terms of width of simulation
-FinishProportion = 0.1 #proportion of cells to have passed EndPointX for simulation to be considered over
-plt.axvline(x = EndPointX * PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
-global Finished 
+#add legend
+LegendPatches=[]
+for cell in OverallCellTypes:
+    LegendPatches.append(mpatches.Patch(color=cell.Format.FillColour, label=cell.Name))
+plt.legend(handles=LegendPatches, bbox_to_anchor=(0.19, 1.1))
+
+#add scalebar
+scalebar = AnchoredSizeBar(axes.transData,
+                           10*Scale, str(Scale*10) +'um', loc = 'lower right', 
+                           color='grey',
+                           frameon=False,
+                           size_vertical=1,
+                           bbox_transform=figure.transFigure,
+                           bbox_to_anchor=(0.9, 0.2))
+#axes.add_artist(scalebar)
+
+
+#Add finish line, finish counter and timer
+global Finished
 global EndTime 
-
+EndTime = 0                     
 Finished = False
-EndTime = 0
-
+plt.axvline(x = EndPointX * PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
 counter = axes.annotate("0/"+str(int(round(NCells*FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
+timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
 
-
+#########################################Simulation#########################################
 #Simulation function - defines what to do on each tick of the simulation
 def Simulate(i):
     global Finished
     global EndTime
+    global Cells
 
     ArtistList=[]
-
     OutputPositions=[]
-
-
+    
+    #update network of neighbouring cells
     Cells.GenerateNodeNetwork(1)
 
-    for n,cell in enumerate(Cells):
+    #update forces acting on cells and velocities defined by those forces
+    Cells = CellDynamics.UpdateForces(Cells)
 
-        if cell.Type != "VM":
-
-            #Get cell properties for force calculations
-            CellRadius = cell.Morphology.Radius
-            CellVelocityX = cell.Dynamics.Velocity.X
-            CellVelocityY = cell.Dynamics.Velocity.Y
-            CellPosition = cell.Position
-
-            #Set-up force variables
-            ProximityForceX, ProximityForceY = 0, 0
-            AdhesionForceX, AdhesionForceY = 0, 0
-            MigrationForceX = 0
-
-            #loop through each neighbouring cell
-            for neighbour in cell.Neighbours:
-
-                #get neighbour cell properties for force calculations
-                NeighbourPosition = Cells[neighbour].Position
-                NeighbourRadius = Cells[neighbour].Morphology.Radius
-
-                #get forces due to proximity from each neighbour and increment
-                NewProximityForceX, NewProximityForceY = CellDynamics.Proximity(MinimumDesiredGap,ProximityForce,CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
-                ProximityForceX += NewProximityForceX
-                ProximityForceY += NewProximityForceY
-                
-                #get forces due to adhesions from each neighbour and increment
-                NewAdhesionForceX, NewAdhesionForceY = CellDynamics.Adhesion(AdhesionDistance,AdhesionForceDistance,AdhesionForce, CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
-                AdhesionForceX += NewAdhesionForceX
-                AdhesionForceY += NewAdhesionForceY
-
-                #get list of neighbouring cell types to define forces due to signalling from neighbours
-                AdjacentCellType = CellDynamics.Signalling(cell.Type, Cells[neighbour].Type, CellPosition, NeighbourPosition)
-
-            #get drag forces due to excessive speed
-            SpeedLimitForceX, SpeedLimitForceY = CellDynamics.Drag(CellVelocityX, CellVelocityY, SpeedLimit)
-
-            #get forces from cell intrinsic activities
-            InternalForceX, InternalForceY = CellDynamics.IntrinsicForces(cell.Dynamics.InternalForce, InternalForce, Directionality)
-            
-            #update forces due to neighbouring cell types
-            for item in AdjacentCellType or []:
-                if item == "VM":
-                    if VelocityX < MigrationSpeed:
-                        MigrationForceX = MigrationForce   
-
-            #sum x and y force components
-            TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
-            TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY + InternalForceY
-
-            #calcuate acceleration components proportional to radius squared (assumes equal cell densities)
-            AccelerationX = TotalForceX/(CellRadius**2)
-            AccelerationY = TotalForceY/(CellRadius**2)
-
-            #increments cell velocity components based on acceleration and TickLength (in us)
-            VelocityX += AccelerationX * TickLength 
-            VelocityY += AccelerationY * TickLength 
-
-            #sets new values of velocity components for each cell
-            cell.Dynamics.Velocity.X = VelocityX
-            cell.Dynamics.Velocity.Y = VelocityY
-
-            #sets new cell internal forces
-            cell.Dynamics.InternalForce.X = InternalForceX
-            cell.Dynamics.InternalForce.Y = InternalForceY
-            
-    FinishedCells = 0
     #for each cell, updates position due to calculated velocity and appends cell artist information or positions as required
-    #due to simulation types.
-    #this is a separate loop in order to update all cell velocities before starting to change positions
+    #due to simulation types. Updating position is a separate loop to allow all cell velocities to update changing positions.
+    FinishedCells = 0
     for n, cell in enumerate(Cells):
         Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if SimulationType == "RealTime": 
@@ -353,32 +294,7 @@ if SimulationType == "Real Time": figure.canvas.mpl_connect('pick_event', onpick
 
 
 
-####################################Plot properties#####################################
-#plot characteristics
-axes.set_aspect( 1 )
-axes.set_axis_off()
-plt.xlim(0, PlotWidth)
-plt.ylim(0, 25)
 
-#add legend
-LegendPatches=[]
-for cell in OverallCellTypes:
-    LegendPatches.append(mpatches.Patch(color=cell.Format.FillColour, label=cell.Name))
-plt.legend(handles=LegendPatches, bbox_to_anchor=(0.19, 1.1))
-
-#add scalebar
-scalebar = AnchoredSizeBar(axes.transData,
-                           10*Scale, str(Scale*10) +'um', loc = 'lower right', 
-                           color='grey',
-                           frameon=False,
-                           size_vertical=1,
-                           bbox_transform=figure.transFigure,
-                           bbox_to_anchor=(0.9, 0.2))
-
-#axes.add_artist(scalebar)
-
-#add title
-#plt.title( 'Drosophila Embryonic Midgut' )
 
 plt.show()
 
