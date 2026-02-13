@@ -3,7 +3,7 @@ import matplotlib.patches as mpatches
 import numpy as np
 import matplotlib.animation as animation
 import math as math
-import Cell
+import Cell, CellDynamics
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import time
 
@@ -33,7 +33,7 @@ import time
 
 #7: See if its possible to streamline the InitialiseCell function
 
-#9: Separate forces in simulation to separate functions
+
 
 
 #####################################Cell Properties####################################
@@ -178,148 +178,86 @@ counter = axes.annotate("0/"+str(int(round(NCells*FinishProportion,0))), xy=(20,
 def Simulate(i):
     global Finished
     global EndTime
-    if SimulationType == "RealTime":
-        ArtistList=[]
-    elif SimulationType == "Replay":
-        OutputPositions=[]
-    else:
-        pass
+
+    ArtistList=[]
+
+    OutputPositions=[]
+
 
     Cells.GenerateNodeNetwork(1)
 
     for n,cell in enumerate(Cells):
 
         if cell.Type != "VM":
-            #Define forces due to speed limits
-            Radius = cell.Morphology.Radius
 
-            VelocityX = cell.Dynamics.Velocity.X
-            VelocityY = cell.Dynamics.Velocity.Y
-            VelocityMagnitude = math.hypot(VelocityY, VelocityX)
+            #Get cell properties for force calculations
+            CellRadius = cell.Morphology.Radius
+            CellVelocityX = cell.Dynamics.Velocity.X
+            CellVelocityY = cell.Dynamics.Velocity.Y
+            CellPosition = cell.Position
 
-            AdhesionForceX = 0
-            AdhesionForceY = 0
-
-            SpeedLimitForceX = 0
-            SpeedLimitForceY = 0
-
-            if VelocityMagnitude > SpeedLimit:
-                SpeedLimitForceMagnitude = VelocityMagnitude - SpeedLimit
-                VelocityUnitVectorX = VelocityX/VelocityMagnitude
-                VelocityUnitVectorY = VelocityY/VelocityMagnitude
-                SpeedLimitForceX = -VelocityUnitVectorX * SpeedLimitForceMagnitude
-                SpeedLimitForceY = -VelocityUnitVectorY * SpeedLimitForceMagnitude
-
-            # Define forces related to proximity to other cells
-            # These include:
-            ####    Repulsion due to overlap
-            ####    Attraction due to adhesion
-            ####    Signalling from neighbouring cells
-
-            PositionX = cell.Position.X
-            PositionY = cell.Position.Y
-
-            ProximityForceX = 0
-            ProximityForceY = 0
-            ProximityForceMagnitude = 0
-
+            #Set-up force variables
+            ProximityForceX, ProximityForceY = 0, 0
+            AdhesionForceX, AdhesionForceY = 0, 0
             MigrationForceX = 0
-            VMAdjacent = False
+
+            #loop through each neighbouring cell
             for neighbour in cell.Neighbours:
-                NeighbourPositionX = Cells[neighbour].Position.X
-                NeighbourPositionY = Cells[neighbour].Position.Y
-                Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
-                Gap = Distance - Radius - Cells[neighbour].Morphology.Radius
 
-                # Repulsive forces due to overlap
-                # If the distane between the cells is less than the minimum gap, increase repulsive force in opposite direction
-                # Once the gap is less than MinimumDesiredGap, the repulsive force increases gradually from 0 in a parabola
-                # centred on MinimumDesiredGap, reaching 1 when Gap is 0 and continuing to increase as any overlap increases
+                #get neighbour cell properties for force calculations
+                NeighbourPosition = Cells[neighbour].Position
+                NeighbourRadius = Cells[neighbour].Morphology.Radius
 
-                if Gap < MinimumDesiredGap:
-          
-                    ProximityForceMagnitude = (((1/MinimumDesiredGap) ** 2) * (Gap - 1) ** 2) * ProximityForce
-                    DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
-                    DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
-                    ProximityForceX += -DirectionUnitVectorX * ProximityForceMagnitude
-                    ProximityForceY += -DirectionUnitVectorY * ProximityForceMagnitude
-
-                # Attractive forces due to adhesion
-                # These are felt as soon as AdhesionForceDistance is reached. Attractive forces are at a maximum at 
-                # AdhesionForceDistance, decrease to 0 as Gap approaches AdhesionDistance and are 0 below AdhesionDistance.
-               
-                if Gap <= AdhesionForceDistance:
-                    if Gap >= AdhesionDistance:
-                        AdhesionForceMagnitude = ((Gap/(AdhesionForceDistance)) ** 3) * AdhesionForce
-                    elif Gap < AdhesionDistance:
-                        AdhesionForceMagnitude = 0
-
-
-                    DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
-                    DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
-
-                    AdhesionForceX += DirectionUnitVectorX * AdhesionForceMagnitude
-                    AdhesionForceY += DirectionUnitVectorY * AdhesionForceMagnitude
-       
-
+                #get forces due to proximity from each neighbour and increment
+                NewProximityForceX, NewProximityForceY = CellDynamics.Proximity(MinimumDesiredGap,ProximityForce,CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
+                ProximityForceX += NewProximityForceX
+                ProximityForceY += NewProximityForceY
                 
+                #get forces due to adhesions from each neighbour and increment
+                NewAdhesionForceX, NewAdhesionForceY = CellDynamics.Adhesion(AdhesionDistance,AdhesionForceDistance,AdhesionForce, CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
+                AdhesionForceX += NewAdhesionForceX
+                AdhesionForceY += NewAdhesionForceY
 
+                #get list of neighbouring cell types to define forces due to signalling from neighbours
+                AdjacentCellType = CellDynamics.Signalling(cell.Type, Cells[neighbour].Type, CellPosition, NeighbourPosition)
 
+            #get drag forces due to excessive speed
+            SpeedLimitForceX, SpeedLimitForceY = CellDynamics.Drag(CellVelocityX, CellVelocityY, SpeedLimit)
 
-                # Forces due to signalling from VM
-                # Checks if cell is a PMEC adjacent to (within adhesion distance) of VM. If it is, sets VMAdjacent to true
-                # If VMAdjacent is true and cell velocity is lower than migration speed, force in the x direction is increased       
-                if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
-                    Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
-                    VMAdjacent = True
+            #get forces from cell intrinsic activities
+            InternalForceX, InternalForceY = CellDynamics.IntrinsicForces(cell.Dynamics.InternalForce, InternalForce, Directionality)
+            
+            #update forces due to neighbouring cell types
+            for item in AdjacentCellType or []:
+                if item == "VM":
+                    if VelocityX < MigrationSpeed:
+                        MigrationForceX = MigrationForce   
 
-            # Cell intrinsic forces
-            # If maximum internal force (InternalForce) is not 0 and there is no internal force on the cell
-            # A random force (between 0 and InternalForce) is applied to the cell in a random direction.
-            # If the cell is already experiencing an InternalForce, a new direction and random magnitude is chosen
-            # The direction is constrained by directionality:
-            # If directionality is 1, the force will be in the same direction.
-            # If directionality is 0, the force will be in a random direction.
-            # If directionality is 0.5, the force will be within 90 degrees of the current force direction.
-            InternalForceX = cell.Dynamics.InternalForce.X
-            InternalForceY = cell.Dynamics.InternalForce.Y
-
-            if InternalForceX == 0 and InternalForceY == 0 and InternalForce != 0:
-                InternalForceDirection = np.random.random() * 2 * math.pi
-                InternalForceMagnitude = np.random.random() * InternalForce
-            elif InternalForce != 0:
-                InternalForceDirection = math.atan2(InternalForceX,InternalForceY)
-                InternalForceDirection += (np.random.random() - 0.5 ) * 2 * math.pi * (1 - Directionality)
-                InternalForceMagnitude = np.random.random() * InternalForce
-
-            InternalForceX = InternalForceMagnitude * math.cos(InternalForceDirection)
-            InternalForceY = InternalForceMagnitude * math.sin(InternalForceDirection)
-
-
-
-
-            if VMAdjacent==True and VelocityX < MigrationSpeed:
-                MigrationForceX = MigrationForce
-        
-
+            #sum x and y force components
             TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
             TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY + InternalForceY
 
-            AccelerationX = TotalForceX/(Radius**2)
-            AccelerationY = TotalForceY/(Radius**2)
+            #calcuate acceleration components proportional to radius squared (assumes equal cell densities)
+            AccelerationX = TotalForceX/(CellRadius**2)
+            AccelerationY = TotalForceY/(CellRadius**2)
 
+            #increments cell velocity components based on acceleration and TickLength (in us)
             VelocityX += AccelerationX * TickLength 
             VelocityY += AccelerationY * TickLength 
 
+            #sets new values of velocity components for each cell
             cell.Dynamics.Velocity.X = VelocityX
             cell.Dynamics.Velocity.Y = VelocityY
 
+            #sets new cell internal forces
             cell.Dynamics.InternalForce.X = InternalForceX
             cell.Dynamics.InternalForce.Y = InternalForceY
             
     FinishedCells = 0
+    #for each cell, updates position due to calculated velocity and appends cell artist information or positions as required
+    #due to simulation types.
+    #this is a separate loop in order to update all cell velocities before starting to change positions
     for n, cell in enumerate(Cells):
-        
         Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if SimulationType == "RealTime": 
             ArtistList.append(cell.artist)
@@ -328,28 +266,32 @@ def Simulate(i):
         else:
             pass
 
-        #count number of cells that have passed finish line
+        #count number of cells that have passed the finish line
         if cell.Position.X > (PlotWidth * EndPointX) and cell.Type != "VM":
             FinishedCells += 1
     
-    #update timer if migration isn't complete
+    #if finishing requirements are met, set simulation as finished and save end time
     if FinishedCells >= NCells * FinishProportion and Finished == False:
         Finished = True
         EndTime = i * TickLength
     
+    #update timer - if not finished, increment by ticklength, if finished, set to end time
     if Finished == False:
         timer.set_text(str(i * TickLength) + "s")
     else:
         timer.set_text(str(EndTime) + "s")
         timer.set_color('r')
 
+    #update counter for cells that have reached finish requirements
     counter.set_text(str(FinishedCells)+"/"+str(int(round(NCells*FinishProportion))))
     
+    #return artist list for real time simulation
     if SimulationType == "RealTime":
         ArtistList.append(timer)
         ArtistList.append(counter)
         return tuple(ArtistList)
     
+    #return positions for replayed simulation
     elif SimulationType == "Replay":
         return OutputPositions
 
