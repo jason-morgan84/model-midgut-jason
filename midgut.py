@@ -19,9 +19,6 @@ import time
 
 #TO DO:
 
-#0: Adjust collision
-############0.1: As adhesion increases, there's still something odd about collisions - overlap from some angles, bouncing too much from others
-
 #1: Add random movement
 
 #2: Consider changes to adjacency at diagonals
@@ -82,7 +79,6 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                         Density = 1)]))
 
 
-
 #####################################Initialisation#####################################
 #define plot and axes
 figure, axes = plt.subplots()
@@ -128,34 +124,34 @@ TickNumber = 1000
 # Whether to run simulation in real time ("RealTime"),
 # simulate then replay ("Replay")
 # or simulate and report results ("Report")
-SimulationType = "Replay"
+SimulationType = "RealTime"
 
 #Variables defining speed of migration
 MigrationSpeed = 0.05 #um/Tick
 SpeedLimit = 0.06 #um/Tick
 
-AdhesionDistance = 0.1 #ScaleUnits
-AdhesionForce = 0.00005 #MassUnits.ScaleUnits.TickLength^-2
+AdhesionDistance = 0.05 #ScaleUnits
+AdhesionForce = 0.01 #MassUnits.ScaleUnits.TickLength^-2
 
 MinimumDesiredGap = 0.05
 ProximityForce = 0.00005
 
-MigrationForce = 0.0005
+MigrationForce = 0.05
 
+#Define variables for defining and recording simulation end point
 EndPointX = 0.5 #defines finish line for measuring in terms of width of simulation
+FinishProportion = 0.1 #proportion of cells to have passed EndPointX for simulation to be considered over
 plt.axvline(x = EndPointX * PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
-
 global Finished 
-Finished = False
-
 global EndTime 
+
+Finished = False
 EndTime = 0
 
-FinishProportion = 0.1
 counter = axes.annotate("0/"+str(int(round(NCells*FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
-#Simulation function - defines what to do on each tick of the simulation
-#If RealTime is False outputs a list of cell positions, otherwise outputs a list of Artists (shapes) that have changed
 
+
+#Simulation function - defines what to do on each tick of the simulation
 def Simulate(i):
     global Finished
     global EndTime
@@ -164,7 +160,7 @@ def Simulate(i):
     elif SimulationType == "Replay":
         OutputPositions=[]
     else:
-        ArtistList=[]
+        pass
 
     Cells.GenerateNodeNetwork(1)
 
@@ -228,9 +224,19 @@ def Simulate(i):
                 # Attractive forces due to adhesion
                 # These are felt as soon as AdhesionDistance * 2 is reached. Attractive forces are at a maximum at 
                 # AdhesionDistance * 2, decrease to 0 as Gap approaches AdhesionDistance and are 0 below AdhesionDistance.
-                if Gap <= AdhesionDistance * 2:
+
+                # AdhesionDistance defines desired separation distance of two stably adhered cells.
+                # Below AdhesionDistance, no adhesive force is felt.
+                # AdhesionForceDistance defines the maximum distance at which an attractive force is felt
+                # At AdhesionForceDistance, a maximum attractive force is felt
+                # Above AdhesionForceDistance, no attractive force is felt
+                # As the gap between the cells decreases from AdhesionForceDistance to AdhesionDistance, attractive force decreases to 0
+                
+                AdhesionForceDistance = AdhesionDistance * 3
+                
+                if Gap <= AdhesionForceDistance:
                     if Gap >= AdhesionDistance:
-                        AdhesionForceMagnitude = ((Gap/AdhesionDistance) ** 3) * AdhesionForce
+                        AdhesionForceMagnitude = ((Gap/(AdhesionForceDistance)) ** 3) * AdhesionForce
                     elif Gap < AdhesionDistance:
                         AdhesionForceMagnitude = 0
 
@@ -238,8 +244,8 @@ def Simulate(i):
                     DirectionUnitVectorX = (NeighbourPositionX - PositionX) / Distance
                     DirectionUnitVectorY = (NeighbourPositionY - PositionY) / Distance
 
-                    AdhesionForceX += -DirectionUnitVectorX * AdhesionForceMagnitude
-                    AdhesionForceY += -DirectionUnitVectorY * AdhesionForceMagnitude
+                    AdhesionForceX += DirectionUnitVectorX * AdhesionForceMagnitude
+                    AdhesionForceY += DirectionUnitVectorY * AdhesionForceMagnitude
        
 
                 # Forces due to signalling from VM
@@ -274,9 +280,9 @@ def Simulate(i):
         elif SimulationType == "Replay":
             OutputPositions.append([cell.Position.X,cell.Position.Y])
         else:
-            ArtistList.append(cell.artist)
+            pass
 
-
+        #count number of cells that have passed finish line
         if cell.Position.X > (PlotWidth * EndPointX) and cell.Type != "VM":
             FinishedCells += 1
     
@@ -293,7 +299,6 @@ def Simulate(i):
 
     counter.set_text(str(FinishedCells)+"/"+str(int(round(NCells*FinishProportion))))
     
-
     if SimulationType == "RealTime":
         ArtistList.append(timer)
         ArtistList.append(counter)
@@ -339,10 +344,6 @@ elif SimulationType == "Report":
             break
 
     
-
-
-
-
 ######################################Interaction#######################################
 #what to do on mouse click - only works when running in real time
 def onpick1(event):
@@ -395,14 +396,3 @@ plt.show()
 
 ########################################################################################
 
-
-
-
-    
-
-#re-included if click is needed
-""" def on_click(event):
-    if event.button is MouseButton.LEFT:
-        print(f'data coords {event.xdata} {event.ydata}') """
-
-#plt.connect('button_press_event', on_click)
