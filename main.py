@@ -27,6 +27,7 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 
 #TO DO:
+#0: Add method to allow multiple repeats with different variables with single click
 
 #1: Add method for measuring results of interest
 
@@ -94,8 +95,11 @@ axes.add_artist(scalebar)
 # Adds finish line, finish counter and timer to plot
 global Finished
 global EndTime 
-EndTime = 0                     
+global FinishedCells
+
+EndTime = SimulationVariables.TickNumber                     
 Finished = False
+FinishedCells = 0
 plt.axvline(x = SimulationVariables.EndPointX * SimulationVariables.PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
 counter = axes.annotate("0/"+str(int(round(NCells*SimulationVariables.FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
 timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
@@ -106,10 +110,11 @@ def Simulate(i):
     global Finished
     global EndTime
     global Cells
+    global FinishedCells
 
     ArtistList=[]
     OutputPositions=[]
-    
+    FinishedCells = 0 
     #update network of neighbouring cells
     Cells.GenerateNodeNetwork(1)
 
@@ -118,7 +123,6 @@ def Simulate(i):
 
     #for each cell, updates position due to calculated velocity and appends cell artist information or positions as required
     #due to simulation types. Updating position is a separate loop to allow all cell velocities to update changing positions.
-    FinishedCells = 0
     for n, cell in enumerate(Cells):
         Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
         if SimulationVariables.SimulationType == "RealTime": 
@@ -129,6 +133,7 @@ def Simulate(i):
             pass
 
         #count number of cells that have passed the finish line
+
         if cell.Position.X > (SimulationVariables.PlotWidth * SimulationVariables.EndPointX) and cell.Type != "VM":
             FinishedCells += 1
     
@@ -188,12 +193,15 @@ elif SimulationVariables.SimulationType == "Replay":
 
 elif SimulationVariables.SimulationType == "Report":
     for tick in range(SimulationVariables.TickNumber):
-        if Finished == False:
-            Simulate(tick)
-        else:
-            print(str(SimulationVariables.FinishProportion*100)+"% of cells covered "
+        #print(tick)
+        #if Finished == False:
+        Simulate(tick)
+        #else:
+           #break
+
+    print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
                   +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
-            break
+
 
     
 ######################################Interaction#######################################
@@ -218,8 +226,7 @@ if SimulationVariables.SimulationType == "RealTime": figure.canvas.mpl_connect('
 
 
 
-
-plt.show()
+if SimulationVariables.SimulationType != "Report": plt.show()
 
 ########################################################################################
 

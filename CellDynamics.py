@@ -83,6 +83,8 @@ def Signalling(Cell1Type, Cell2Type, Cell1Position, Cell2Position):
     if Cell1Type == "PMEC" and Cell2Type == "VM":
         #Distance = math.hypot(NeighbourPositionY - PositionY, NeighbourPositionX - PositionX)
         AdjacentCellType.add(Cell2Type)
+    #print(AdjacentCellType)
+    return AdjacentCellType
 
 def IntrinsicForces(InternalForceVector):
     # Cell intrinsic forces
@@ -125,7 +127,6 @@ def UpdateForces(Cells):
             ProximityForceX, ProximityForceY = 0, 0
             AdhesionForceX, AdhesionForceY = 0, 0
             MigrationForceX = 0
-
             #loop through each neighbouring cell
             for neighbour in cell.Neighbours:
 
@@ -143,8 +144,11 @@ def UpdateForces(Cells):
                 AdhesionForceX += NewAdhesionForceX
                 AdhesionForceY += NewAdhesionForceY
 
-                #get list of neighbouring cell types to define forces due to signalling from neighbours
-                AdjacentCellType = Signalling(cell.Type, Cells[neighbour].Type, CellPosition, NeighbourPosition)
+                #update migration forces due to neighbouring cell types
+                if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
+                    if CellVelocityX < SimulationVariables.MigrationSpeed:
+                        MigrationForceX = SimulationVariables.MigrationForce  
+
 
             #get drag forces due to excessive speed
             SpeedLimitForceX, SpeedLimitForceY = Drag(CellVelocityX, CellVelocityY)
@@ -152,12 +156,6 @@ def UpdateForces(Cells):
             #get forces from cell intrinsic activities
             InternalForceX, InternalForceY = IntrinsicForces(cell.Dynamics.InternalForce)
             
-            #update forces due to neighbouring cell types
-            for item in AdjacentCellType or []:
-                if item == "VM":
-                    if CellVelocityX < SimulationVariables.MigrationSpeed:
-                        MigrationForceX = SimulationVariables.MigrationForce   
-
             #sum x and y force components
             TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
             TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY + InternalForceY
