@@ -151,7 +151,7 @@ class Cells:
             zorder = 5)
         return self.artist
         
-        
+   
     def UpdatePosition(self,XChange,YChange):
         self.Position.X += XChange
         self.Position.Y += YChange
@@ -178,7 +178,19 @@ class CellList:
                 return n
             
     def AddCell(self,Cell):
-        self.Cells_List.append(Cell)
+        self.Cells_List.append(Cell)    
+        
+    def N(self,CellTypes = "All"):
+        n = 0
+        if CellTypes == "All":
+            for item in self:
+                n += 1
+        else:
+            for item in self:
+                for celltype in CellTypes:
+                    if item.Type == celltype: 
+                        n += 1
+        return n
        
     def GenerateNodeNetwork(self,MaxNeighbourDistance):
         #For each cell in Cells_List, generates a list of the neighbour cells (given MaxNeighbourDistance) and the distance to each

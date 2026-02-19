@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import matplotlib.animation as animation
+import matplotlib.text
 import math as math
 import Cell, CellDynamics, SimulationVariables, CellVariables
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
@@ -49,60 +50,55 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 #####################################Initialisation#####################################
 # Initialises plot area, creates variables storing cell locations and draws cells on plot
 # Define plot and axes
-figure, axes = plt.subplots()
-axes.set_aspect( 1 )
-axes.set_axis_off()
-plt.xlim(0, SimulationVariables.PlotWidth)
-plt.ylim(0, 25)
-#plt.title( 'Drosophila Embryonic Midgut' )
 
+def InitialisePlot():
+    figure, axes = plt.subplots()
+    axes.set_aspect( 1 )
+    axes.set_axis_off()
+    plt.xlim(0, SimulationVariables.PlotWidth)
+    plt.ylim(0, 25)
+    #plt.title( 'Drosophila Embryonic Midgut' )
+    plt.axvline(x = SimulationVariables.EndPointX * SimulationVariables.PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
+    return figure, axes
+    
 # Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
-Cells=Cell.CellList()
+def InitialiseCells():
+    Cells=Cell.CellList()
+    # For each cell type, intialise starting positions of those cells, add cells to Cells variable and add cell type to legend
+    for type in CellVariables.OverallCellTypes:
+        for EachCell in type.Initialise():
+            Cells.AddCell(EachCell)
+    
+    # Defines neighbours for each cell
+    Cells.GenerateNodeNetwork(1)
 
-# For each cell type, intialise starting positions of those cells, add cells to Cells variable and add cell type to legend
-LegendPatches=[]
-for type in CellVariables.OverallCellTypes:
-    for EachCell in type.Initialise():
-        Cells.AddCell(EachCell)
-    LegendPatches.append(mpatches.Patch(color=type.Format.FillColour, label=type.Name))
+    # Draw each cell on axis
 
-# Draw each cell on axis
-for cell in Cells:
-    axes.add_artist(cell.Draw())
+    return Cells
 
-# Defines neighbours for each cell
-Cells.GenerateNodeNetwork(1)
+def InitialiseLegend(axes):
+    LegendPatches=[]
+    for type in CellVariables.OverallCellTypes:
+        LegendPatches.append(mpatches.Patch(color=type.Format.FillColour, label=type.Name))
+    # Adds legend to plot
+    plt.legend(handles=LegendPatches, bbox_to_anchor=(0.19, 1.1))
+    return axes
 
-# Counts number of simulated cells
-NCells = 0
-for cell in Cells:
-    if cell.Type != "VM":
-        NCells += 1
+def InitialiseScalebar(axes,figure):
+    # Add scalebar to plot
+    scalebar = AnchoredSizeBar(axes.transData,
+                            10*SimulationVariables.Scale, str(SimulationVariables.Scale*10) +'um', loc = 'lower right', 
+                            color='royalblue',
+                            frameon=False,
+                            size_vertical=1,
+                            bbox_transform=figure.transFigure,
+                            bbox_to_anchor=(0.9, 0.1))
+    axes.add_artist(scalebar)
+    return axes
 
-# Adds legend to plot
-plt.legend(handles=LegendPatches, bbox_to_anchor=(0.19, 1.1))
 
-# Add scalebar to plot
-scalebar = AnchoredSizeBar(axes.transData,
-                           10*SimulationVariables.Scale, str(SimulationVariables.Scale*10) +'um', loc = 'lower right', 
-                           color='royalblue',
-                           frameon=False,
-                           size_vertical=1,
-                           bbox_transform=figure.transFigure,
-                           bbox_to_anchor=(0.9, 0.1))
-axes.add_artist(scalebar)
+    
 
-# Adds finish line, finish counter and timer to plot
-global Finished
-global EndTime 
-global FinishedCells
-
-EndTime = SimulationVariables.TickNumber                     
-Finished = False
-FinishedCells = 0
-plt.axvline(x = SimulationVariables.EndPointX * SimulationVariables.PlotWidth, color = 'lightcoral', alpha = 0.5, linewidth = 2, label = 'Finish Line')
-counter = axes.annotate("0/"+str(int(round(NCells*SimulationVariables.FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
-timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
 
 #########################################Simulation#########################################
 # Simulation function - defines what to do on each tick of the simulation
@@ -137,11 +133,15 @@ def Simulate(i):
         if cell.Position.X > (SimulationVariables.PlotWidth * SimulationVariables.EndPointX) and cell.Type != "VM":
             FinishedCells += 1
     
+    NCells = Cells.N()
+
     #if finishing requirements are met, set simulation as finished and save end time
     if FinishedCells >= NCells * SimulationVariables.FinishProportion and Finished == False:
         Finished = True
         EndTime = i * SimulationVariables.TickLength
     
+
+
     #update timer - if not finished, increment by ticklength, if finished, set to end time
     if Finished == False:
         timer.set_text(str(i * SimulationVariables.TickLength) + "s")
@@ -174,36 +174,6 @@ def Replay(i):
     ArtistList.append(timer)
     return tuple(ArtistList)
 
-# If running in real time, runs simulation and updates output plots
-# If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
-# on this saved data.
-# If reporting data only, runs simulation and outputs results
-if SimulationVariables.SimulationType == "RealTime":
-    ani = animation.FuncAnimation(figure, func = Simulate, frames=SimulationVariables.TickNumber, interval=40, blit=True,repeat=False)
-
-elif SimulationVariables.SimulationType == "Replay":
-    RecordedPositions=[]
-    for tick in range(SimulationVariables.TickNumber):
-        if Finished == False:
-            NewPosition = Simulate(tick)
-            RecordedPositions.append(NewPosition)
-        else:
-            break
-    ani = animation.FuncAnimation(figure, Replay, frames=len(RecordedPositions), interval=10, blit=True, repeat=False)
-
-elif SimulationVariables.SimulationType == "Report":
-    for tick in range(SimulationVariables.TickNumber):
-        #print(tick)
-        #if Finished == False:
-        Simulate(tick)
-        #else:
-           #break
-
-    print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
-                  +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
-
-
-    
 ######################################Interaction#######################################
 # What to do on mouse click - only works when running in real time
 def onpick1(event):
@@ -221,11 +191,58 @@ def onpick1(event):
     else:
         for cell in Cells:
             cell.artist.set_edgecolor('black')
+            
+
+# If running in real time, runs simulation and updates output plots
+# If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
+# on this saved data.
+# If reporting data only, runs simulation and outputs results
+figure, axes = InitialisePlot()
+Cells = InitialiseCells()
+InitialiseLegend(axes)
+InitialiseScalebar(axes, figure)
+
+# Adds finish line, finish counter and timer to plot
+global Finished
+global EndTime 
+global FinishedCells
+
+EndTime = SimulationVariables.TickNumber                     
+Finished = False
+FinishedCells = 0
+
+for cell in Cells:
+    axes.add_artist(cell.Draw())
+
+timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
+counter = axes.annotate("0/"+str(int(round(Cells.N() * SimulationVariables.FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
+
+
+
+if SimulationVariables.SimulationType == "RealTime":
+    ani = animation.FuncAnimation(figure, func = Simulate, frames=SimulationVariables.TickNumber, interval=40, blit=True,repeat=False)
+
+elif SimulationVariables.SimulationType == "Replay":
+    RecordedPositions=[]
+    for tick in range(SimulationVariables.TickNumber):
+        if Finished == False:
+            NewPosition = Simulate(tick)
+            RecordedPositions.append(NewPosition)
+        else:
+            break
+    ani = animation.FuncAnimation(figure, Replay, frames=len(RecordedPositions), interval=10, blit=True, repeat=False)
+
+elif SimulationVariables.SimulationType == "Report":
+    for tick in range(SimulationVariables.TickNumber):
+        Simulate(tick)
+
+    print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
+                  +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
+
+
+    
+
 if SimulationVariables.SimulationType == "RealTime": figure.canvas.mpl_connect('pick_event', onpick1)
-
-
-
-
 if SimulationVariables.SimulationType != "Report": plt.show()
 
 ########################################################################################
