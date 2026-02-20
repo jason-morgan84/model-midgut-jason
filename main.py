@@ -107,10 +107,14 @@ def Simulate(i):
     global EndTime
     global Cells
     global FinishedCells
+    global FinishedOtherCells
+    global FinishedPMECCells
 
     ArtistList=[]
     OutputPositions=[]
     FinishedCells = 0 
+    FinishedPMECCells = 0
+    FinishedOtherCells = 0
     #update network of neighbouring cells
     Cells.GenerateNodeNetwork(1)
 
@@ -131,9 +135,13 @@ def Simulate(i):
         #count number of cells that have passed the finish line
 
         if cell.Position.X > (SimulationVariables.PlotWidth * SimulationVariables.EndPointX) and cell.Type != "VM":
-            FinishedCells += 1
-    
-    NCells = Cells.N()
+            if cell.Type == "Other":
+                FinishedOtherCells += 1
+            elif cell.Type == "PMEC":
+                FinishedPMECCells += 1
+            FinishedCells = FinishedPMECCells + FinishedOtherCells
+        NCells = n
+    #NCells = Cells.N()
 
     #if finishing requirements are met, set simulation as finished and save end time
     if FinishedCells >= NCells * SimulationVariables.FinishProportion and Finished == False:
@@ -197,6 +205,24 @@ def onpick1(event):
 # If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
 # on this saved data.
 # If reporting data only, runs simulation and outputs results
+
+#Repeats = 3
+#MigrationForces = [0.1,0.05,0.01,0.005]
+#AdhesionForces = [0.0025,0.00025,0.00005,0.00001]
+
+
+#print("MigrationForce, AdhesionForce, Repeat, FinishedPMECCells, TotalPMECCells, FinishedOtherCells, TotalOtherCells")
+#for MigrationForce in MigrationForces:
+#    SimulationVariables.MigrationForce = MigrationForce
+    #print("MigrationForce: "+str(SimulationVariables.MigrationForce))
+#    for AdhesionForce in AdhesionForces:
+#        SimulationVariables.AdhesionForce = AdhesionForce
+        #print("AdhesionForce: "+str(SimulationVariables.AdhesionForce))
+ #       for repeat in range(Repeats):
+            #print("Repeat: "+str(repeat))
+
+
+            #print("MigrationForce: " + str(SimulationVariables.MigrationForce) + ", AdhesionForce: " + str(SimulationVariables.AdhesionForce))
 figure, axes = InitialisePlot()
 Cells = InitialiseCells()
 InitialiseLegend(axes)
@@ -205,11 +231,13 @@ InitialiseScalebar(axes, figure)
 # Adds finish line, finish counter and timer to plot
 global Finished
 global EndTime 
-global FinishedCells
+global FinishedOtherCells
+global FinishedPMECCells
 
 EndTime = SimulationVariables.TickNumber                     
 Finished = False
-FinishedCells = 0
+FinishedOtherCells = 0
+FinishedPMECCells = 0
 
 for cell in Cells:
     axes.add_artist(cell.Draw())
@@ -234,16 +262,18 @@ elif SimulationVariables.SimulationType == "Replay":
 
 elif SimulationVariables.SimulationType == "Report":
     for tick in range(SimulationVariables.TickNumber):
+        #print(tick)
         Simulate(tick)
-
-    print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
-                  +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
+    #print(MigrationForce, AdhesionForce, repeat, FinishedPMECCells, Cells.N("PMEC"),FinishedOtherCells,Cells.N("Other"))
+    #print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
+    #              +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
 
 
     
 
 if SimulationVariables.SimulationType == "RealTime": figure.canvas.mpl_connect('pick_event', onpick1)
 if SimulationVariables.SimulationType != "Report": plt.show()
+#plt.close(figure)
 
 ########################################################################################
 

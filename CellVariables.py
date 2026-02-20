@@ -8,28 +8,28 @@ OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperPMEC",
-                        Position = Cell.XY(-21,16),
+                        Position = Cell.XY(-41,16),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
-                        Number = 20),
+                        Number = 30),
                     Cell.StartingPosition(
                         ID = "LowerPMEC",
-                        Position = Cell.XY(-21,5),
+                        Position = Cell.XY(-41,5),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = "XAlign",
-                        Number = 20)]))
+                        Number = 30)]))
 
 OverallCellTypes.append(Cell.CellTypes(Name = "VM",Format = Cell.Format(FillColour = 'plum'),
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "UpperVM",
-                        Position = Cell.XY(-21,17.5),
+                        Position = Cell.XY(-41,17.5),
                         Morphology = Cell.Morphology(Radius = 0.5),
                         Arrange = "XAlign",
                         Number = 100),
                     Cell.StartingPosition(
                         ID = "LowerVM",
-                        Position = Cell.XY(-21,3.5),
+                        Position = Cell.XY(-41,3.5),
                         Morphology = Cell.Morphology(Radius = 0.5),
                         Arrange = "XAlign",
                         Number = 100)]))
@@ -38,7 +38,7 @@ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillC
                 StartingPosition = 
                     [Cell.StartingPosition(
                         ID = "Other",
-                        Position = Cell.XY(-21,7),
+                        Position = Cell.XY(-41,7),
                         Morphology = Cell.Morphology(Radius = 1),
                         Arrange = 'Pack',
                         DrawLimits = Cell.XY(21,15.67),

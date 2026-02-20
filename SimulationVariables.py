@@ -8,12 +8,12 @@ SimulationType = "RealTime"       #   Simulate in real time ("RealTime"), simula
 
 #Variables defining speed of migration
 MigrationSpeed = 0.05           #   Speed of migrating cells (plot unit/tick)
-MigrationForce = 0.1           #   Force applied to a migrating cell
+MigrationForce = 0.005           #   Force applied to a migrating cell
 
 #Variables defining adhesion
 AdhesionDistance = 0.05         #   Distance of two adhered cells (plot unit)
 AdhesionForceDistance = AdhesionDistance * 3    #   Maximum distance beyond cell boundary that adhesion forces are felt
-AdhesionForce = 0.1            #   Maximum force adhesion applies to neighbouring cells (MassUnits.ScaleUnits.TickLength^-2)
+AdhesionForce = 0.001            #   Maximum force adhesion applies to neighbouring cells (MassUnits.ScaleUnits.TickLength^-2)
 
 #Variables defining repulsion (collision avoidance)
 MinimumDesiredGap = 0.05        #   Minimum desired gap between cells (gaps can be smaller than this, but repulsive force will increase)

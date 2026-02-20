@@ -190,6 +190,11 @@ class CellList:
                 for celltype in CellTypes:
                     if item.Type == celltype: 
                         n += 1
+                else:
+                    #print()
+                    if item.Type == CellTypes: 
+                        n += 1
+
         return n
        
     def GenerateNodeNetwork(self,MaxNeighbourDistance):
