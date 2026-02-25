@@ -206,74 +206,70 @@ def onpick1(event):
 # on this saved data.
 # If reporting data only, runs simulation and outputs results
 
-#Repeats = 3
-#MigrationForces = [0.1,0.05,0.01,0.005]
-#AdhesionForces = [0.0025,0.00025,0.00005,0.00001]
+Repeats = 3
+MigrationForces = [0.1,0.05,0.01,0.005]
+AdhesionForces = [0.0001,0.0005,0.001,0.005,0.01,0.05]
+InternalForces = [0.0001,0.0005,0.001,0.005,0.01,0.05]   
 
 
-#print("MigrationForce, AdhesionForce, Repeat, FinishedPMECCells, TotalPMECCells, FinishedOtherCells, TotalOtherCells")
-#for MigrationForce in MigrationForces:
-#    SimulationVariables.MigrationForce = MigrationForce
-    #print("MigrationForce: "+str(SimulationVariables.MigrationForce))
-#    for AdhesionForce in AdhesionForces:
-#        SimulationVariables.AdhesionForce = AdhesionForce
-        #print("AdhesionForce: "+str(SimulationVariables.AdhesionForce))
- #       for repeat in range(Repeats):
-            #print("Repeat: "+str(repeat))
+print("InternalForce, MigrationForce, AdhesionForce, Repeat, FinishedPMECCells, TotalPMECCells, FinishedOtherCells, TotalOtherCells")
+for InternalForce in InternalForces:
+    SimulationVariables.InternalForce = InternalForce
+    for MigrationForce in MigrationForces:
+        SimulationVariables.MigrationForce = MigrationForce
+        for AdhesionForce in AdhesionForces:
+            SimulationVariables.AdhesionForce = AdhesionForce
+            for repeat in range(Repeats):
+                figure, axes = InitialisePlot()
+                Cells = InitialiseCells()
+                InitialiseLegend(axes)
+                InitialiseScalebar(axes, figure)
 
+                # Adds finish line, finish counter and timer to plot
+                global Finished
+                global EndTime 
+                global FinishedOtherCells
+                global FinishedPMECCells
 
-            #print("MigrationForce: " + str(SimulationVariables.MigrationForce) + ", AdhesionForce: " + str(SimulationVariables.AdhesionForce))
-figure, axes = InitialisePlot()
-Cells = InitialiseCells()
-InitialiseLegend(axes)
-InitialiseScalebar(axes, figure)
+                EndTime = SimulationVariables.TickNumber                     
+                Finished = False
+                FinishedOtherCells = 0
+                FinishedPMECCells = 0
 
-# Adds finish line, finish counter and timer to plot
-global Finished
-global EndTime 
-global FinishedOtherCells
-global FinishedPMECCells
+                for cell in Cells:
+                    axes.add_artist(cell.Draw())
 
-EndTime = SimulationVariables.TickNumber                     
-Finished = False
-FinishedOtherCells = 0
-FinishedPMECCells = 0
-
-for cell in Cells:
-    axes.add_artist(cell.Draw())
-
-timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
-counter = axes.annotate("0/"+str(int(round(Cells.N() * SimulationVariables.FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
+                timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
+                counter = axes.annotate("0/"+str(int(round(Cells.N() * SimulationVariables.FinishProportion,0))), xy=(20, 21), xytext=(40,1), horizontalalignment='right')
 
 
 
-if SimulationVariables.SimulationType == "RealTime":
-    ani = animation.FuncAnimation(figure, func = Simulate, frames=SimulationVariables.TickNumber, interval=40, blit=True,repeat=False)
+                if SimulationVariables.SimulationType == "RealTime":
+                    ani = animation.FuncAnimation(figure, func = Simulate, frames=SimulationVariables.TickNumber, interval=40, blit=True,repeat=False)
 
-elif SimulationVariables.SimulationType == "Replay":
-    RecordedPositions=[]
-    for tick in range(SimulationVariables.TickNumber):
-        if Finished == False:
-            NewPosition = Simulate(tick)
-            RecordedPositions.append(NewPosition)
-        else:
-            break
-    ani = animation.FuncAnimation(figure, Replay, frames=len(RecordedPositions), interval=10, blit=True, repeat=False)
+                elif SimulationVariables.SimulationType == "Replay":
+                    RecordedPositions=[]
+                    for tick in range(SimulationVariables.TickNumber):
+                        if Finished == False:
+                            NewPosition = Simulate(tick)
+                            RecordedPositions.append(NewPosition)
+                        else:
+                            break
+                    ani = animation.FuncAnimation(figure, Replay, frames=len(RecordedPositions), interval=10, blit=True, repeat=False)
 
-elif SimulationVariables.SimulationType == "Report":
-    for tick in range(SimulationVariables.TickNumber):
-        #print(tick)
-        Simulate(tick)
-    #print(MigrationForce, AdhesionForce, repeat, FinishedPMECCells, Cells.N("PMEC"),FinishedOtherCells,Cells.N("Other"))
-    #print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
-    #              +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
+                elif SimulationVariables.SimulationType == "Report":
+                    for tick in range(SimulationVariables.TickNumber):
+                        Simulate(tick)
+                    print(InternalForce,MigrationForce, AdhesionForce, repeat, FinishedPMECCells, Cells.N("PMEC"),FinishedOtherCells,Cells.N("Other"))
+                    #print("Adhesion Force: " + str(SimulationVariables.AdhesionForce) + ": "+ str(FinishedCells)+" cells covered "
+                    #              +str(SimulationVariables.EndPointX * SimulationVariables.PlotWidth)+"uM in " + str(EndTime) + "s")
 
 
-    
+        
 
-if SimulationVariables.SimulationType == "RealTime": figure.canvas.mpl_connect('pick_event', onpick1)
-if SimulationVariables.SimulationType != "Report": plt.show()
-#plt.close(figure)
+                if SimulationVariables.SimulationType == "RealTime": figure.canvas.mpl_connect('pick_event', onpick1)
+                if SimulationVariables.SimulationType != "Report": plt.show()
+                plt.close(figure)
 
 ########################################################################################
 

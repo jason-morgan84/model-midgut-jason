@@ -4,7 +4,7 @@ Scale = 1                       #   Size of 1 plot unit in um
 TickLength = 1                  #   Length of simulation tick in seconds
 TickNumber = 1000               #   Length of simulation in ticks
 SpeedLimit = 0.06               #   Maximum allowed speed of cells (plot unit/tick)
-SimulationType = "RealTime"       #   Simulate in real time ("RealTime"), simulate then replay ("Replay") or just report results ("Report")
+SimulationType = "Report"       #   Simulate in real time ("RealTime"), simulate then replay ("Replay") or just report results ("Report")
 
 #Variables defining speed of migration
 MigrationSpeed = 0.05           #   Speed of migrating cells (plot unit/tick)
