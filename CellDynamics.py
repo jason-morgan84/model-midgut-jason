@@ -30,7 +30,7 @@ def Proximity(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     Gap = Distance - Cell1Radius - Cell2Radius
 
     if Gap < SimulationVariables.MinimumDesiredGap:
-        ProximityForceMagnitude = (((1/SimulationVariables.MinimumDesiredGap) ** 2) * (Gap - 1) ** 2) * SimulationVariables.ProximityForce
+        ProximityForceMagnitude = SimulationVariables.ProximityForce * (Gap - SimulationVariables.MinimumDesiredGap)**2#(((Gap/SimulationVariables.MinimumDesiredGap) ** 2)) * SimulationVariables.ProximityForce
         DirectionUnitVectorX = (Cell2Position.X - Cell1Position.X) / Distance
         DirectionUnitVectorY = (Cell2Position.Y - Cell1Position.Y) / Distance
         ProximityForceX = -DirectionUnitVectorX * ProximityForceMagnitude

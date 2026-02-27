@@ -28,7 +28,9 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 
 #TO DO:
-#-1: What if adhesion also effects the direction the cells want to move in?
+#-1: Double check collision detection formula - it should always reach the RepulsiveForce at the minimum distance and continue to
+# increases as the gap continues to reduce - not convinced its doing this at the right distances.
+
 
 #0: Add method to allow multiple repeats with different variables with single click
 
@@ -213,8 +215,8 @@ Repeats = 1
 #AdhesionForces = [0.0001,0.0005,0.001,0.005,0.01,0.05]
 #InternalForces = [0.0001,0.0005,0.001,0.005,0.01,0.05]   
 
-MigrationForces = [0.1]
-AdhesionForces = [0.2]
+MigrationForces = [0.05]
+AdhesionForces = [0.0005]
 InternalForces = [0.05]   
 
 print("InternalForce, MigrationForce, AdhesionForce, Repeat, FinishedPMECCells, TotalPMECCells, FinishedOtherCells, TotalOtherCells")

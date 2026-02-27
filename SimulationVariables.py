@@ -16,8 +16,8 @@ AdhesionForceDistance = AdhesionDistance * 3    #   Maximum distance beyond cell
 AdhesionForce = 0.001            #   Maximum force adhesion applies to neighbouring cells (MassUnits.ScaleUnits.TickLength^-2)
 
 #Variables defining repulsion (collision avoidance)
-MinimumDesiredGap = 0.05        #   Minimum desired gap between cells (gaps can be smaller than this, but repulsive force will increase)
-ProximityForce = 0.00005        #   Maximum repulsive force on cells
+MinimumDesiredGap = 0.1        #   Minimum desired gap between cells (gaps can be smaller than this, but repulsive force will increase)
+ProximityForce = 2        #   Maximum repulsive force on cells
 
 # Variables for cell intrinsic forces (the force a cell applies to itself to go where it 'wants' to go)
 InternalForce = 0.005           #   Maximum force a cell can apply to itself
