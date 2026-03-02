@@ -17,7 +17,7 @@ AdhesionForce = 0.001            #   Maximum force adhesion applies to neighbour
 
 #Variables defining repulsion (collision avoidance)
 MinimumDesiredGap = 0.1        #   Minimum desired gap between cells (gaps can be smaller than this, but repulsive force will increase)
-ProximityForce = 2        #   Maximum repulsive force on cells
+ProximityForce = 0.05        #   Maximum repulsive force on cells
 
 # Variables for cell intrinsic forces (the force a cell applies to itself to go where it 'wants' to go)
 InternalForce = 0.005           #   Maximum force a cell can apply to itself

@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import matplotlib.animation as animation
-import matplotlib.text
 import math as math
 import Cell, CellDynamics, SimulationVariables, CellVariables
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
@@ -28,27 +27,26 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 
 #TO DO:
-#-1: Double check collision detection formula - it should always reach the RepulsiveForce at the minimum distance and continue to
-# increases as the gap continues to reduce - not convinced its doing this at the right distances.
-
-
-#0: Add method to allow multiple repeats with different variables with single click
 
 #1: Add method for measuring results of interest
 
-#2: Comment Cell.py
+#2: Add method to change variables by cell type
 
-#3: Consider changes to adjacency at diagonals
-############3.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
-##########################3.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+#3: Tidy method to allow multiple repeats with different variables with single click
 
-#5: Improvements to cell arrangement and packing density
-############5.1: Custom packing algorithm for circles
-##########################5.1.1: Remember, circles are only acting as models for cells - no need for complexity provided by ellipses
-############5.2: Finish "Fill" arrangement 
-############5.3: Random variation in cell size
+#5: Comment Cell.py
 
-#6: Why do RealTime simulations give different results to Replays and Reports
+#6: Consider changes to adjacency at diagonals
+############6.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
+##########################6.2.1: But one at 45 degrees an absolutely adjacent is not closer than one at 90 degrees and adjacent
+
+#7: Improvements to cell arrangement and packing density
+############7.1: Custom packing algorithm for circles
+##########################7.1.1: Remember, circles are only acting as models for cells - no need for complexity provided by ellipses
+############7.2: Finish "Fill" arrangement 
+############7.3: Random variation in cell size
+
+#8: Why do RealTime simulations give different results to Replays and Reports
 
 
 #####################################Initialisation#####################################
@@ -195,9 +193,6 @@ def onpick1(event):
         center = Cell.XY(event.artist.get_center()[0],event.artist.get_center()[1])
         for n, cell in enumerate(Cells):
             if cell.Position.X==center.X and cell.Position.Y==center.Y: 
-                #cell.Dynamics.Velocity.X = (np.random.random()-0.5)*0.5
-                #cell.Dynamics.Velocity.Y = (np.random.random()-0.5)*0.5
-                #print(cell.Neighbours)
                 for item in cell.Neighbours:
                     Cells[item].artist.set_edgecolor('red')     
     else:
@@ -216,7 +211,7 @@ Repeats = 1
 #InternalForces = [0.0001,0.0005,0.001,0.005,0.01,0.05]   
 
 MigrationForces = [0.05]
-AdhesionForces = [0.0005]
+AdhesionForces = [0.01]
 InternalForces = [0.05]   
 
 print("InternalForce, MigrationForce, AdhesionForce, Repeat, FinishedPMECCells, TotalPMECCells, FinishedOtherCells, TotalOtherCells")

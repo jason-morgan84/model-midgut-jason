@@ -24,13 +24,15 @@ def Proximity(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     # Repulsive forces due to proximity
     # If the distane between the cells is less than the minimum gap, increase repulsive force in opposite direction
     # Once the gap is less than MinimumDesiredGap, the repulsive force increases gradually from 0 in a parabola
-    # centred on MinimumDesiredGap, reaching 1 when Gap is 0 and continuing to increase as any overlap increases
+    # centred on MinimumDesiredGap, reaching ProximityForce when Gap is 0 and continuing to increase as any overlap increases
 
     Distance = math.hypot(Cell2Position.Y - Cell1Position.Y, Cell2Position.X - Cell1Position.X)
     Gap = Distance - Cell1Radius - Cell2Radius
 
     if Gap < SimulationVariables.MinimumDesiredGap:
-        ProximityForceMagnitude = SimulationVariables.ProximityForce * (Gap - SimulationVariables.MinimumDesiredGap)**2#(((Gap/SimulationVariables.MinimumDesiredGap) ** 2)) * SimulationVariables.ProximityForce
+        # Force magnitude defined by quadratic formula force = a*gap^2 + b*gap + c, where c = ProximityForce, b = -2*a*MinimumDesiredGap and a = MinimumDesiredGap**2/ProximityForce
+        # Simplified to ProximityForceMagnitude = (Gap*MinimumDesiredGap^2)/ProximityForce(Gap - 2 * MinimumDesiredGap) + ProximityForce
+        ProximityForceMagnitude = ((Gap * SimulationVariables.MinimumDesiredGap ** 2)  / SimulationVariables.ProximityForce) * (Gap - 2 * SimulationVariables.MinimumDesiredGap) + SimulationVariables.ProximityForce
         DirectionUnitVectorX = (Cell2Position.X - Cell1Position.X) / Distance
         DirectionUnitVectorY = (Cell2Position.Y - Cell1Position.Y) / Distance
         ProximityForceX = -DirectionUnitVectorX * ProximityForceMagnitude
