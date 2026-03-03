@@ -1,47 +1,47 @@
-import Cell
+import CellClasses
 
 
 #Define cell types and starting positions
 OverallCellTypes=[]
 
-OverallCellTypes.append(Cell.CellTypes(Name = "PMEC", Format = Cell.Format(FillColour = 'powderblue'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Format = CellClasses.Format(FillColour = 'powderblue'),
                 StartingPosition = 
-                    [Cell.StartingPosition(
+                    [CellClasses.StartingPosition(
                         ID = "UpperPMEC",
-                        Position = Cell.XY(-41,16),
-                        Morphology = Cell.Morphology(Radius = 1),
+                        Position = CellClasses.XY(-41,16),
+                        Morphology = CellClasses.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 30),
-                    Cell.StartingPosition(
+                    CellClasses.StartingPosition(
                         ID = "LowerPMEC",
-                        Position = Cell.XY(-41,5),
-                        Morphology = Cell.Morphology(Radius = 1),
+                        Position = CellClasses.XY(-41,5),
+                        Morphology = CellClasses.Morphology(Radius = 1),
                         Arrange = "XAlign",
                         Number = 30)]))
 
-OverallCellTypes.append(Cell.CellTypes(Name = "VM",Format = Cell.Format(FillColour = 'plum'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "VM",Format = CellClasses.Format(FillColour = 'plum'),
                 StartingPosition = 
-                    [Cell.StartingPosition(
+                    [CellClasses.StartingPosition(
                         ID = "UpperVM",
-                        Position = Cell.XY(-41,17.5),
-                        Morphology = Cell.Morphology(Radius = 0.5),
+                        Position = CellClasses.XY(-41,17.5),
+                        Morphology = CellClasses.Morphology(Radius = 0.5),
                         Arrange = "XAlign",
                         Number = 100),
-                    Cell.StartingPosition(
+                    CellClasses.StartingPosition(
                         ID = "LowerVM",
-                        Position = Cell.XY(-41,3.5),
-                        Morphology = Cell.Morphology(Radius = 0.5),
+                        Position = CellClasses.XY(-41,3.5),
+                        Morphology = CellClasses.Morphology(Radius = 0.5),
                         Arrange = "XAlign",
                         Number = 100)]))
 
-OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "Other",Format = CellClasses.Format(FillColour = 'palegreen'),
                 StartingPosition = 
-                    [Cell.StartingPosition(
+                    [CellClasses.StartingPosition(
                         ID = "Other",
-                        Position = Cell.XY(-41,7),
-                        Morphology = Cell.Morphology(Radius = 1),
+                        Position = CellClasses.XY(-41,7),
+                        Morphology = CellClasses.Morphology(Radius = 1),
                         Arrange = 'Pack',
-                        DrawLimits = Cell.XY(21,15.67),
+                        DrawLimits = CellClasses.XY(21,15.67),
                         Density = 1)]))
 
 """ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),

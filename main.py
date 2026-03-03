@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
 import math as math
-import Cell, CellDynamics, SimulationVariables, CellVariables
+import SimulationVariables, Simulation
 
 
 # Main program loop
@@ -49,53 +49,37 @@ import Cell, CellDynamics, SimulationVariables, CellVariables
 #8: Fix replay mode animation
 ############8.1: Check if RealTime simulations give different results to Replays and Reports
 
-
-
-#########################################Simulation#########################################
-# Simulation function - defines what to do on each tick of the simulation
-def Simulate(Cells):
-    RecordedPositions = []
-    #update network of neighbouring cells
-    Cells.GenerateNodeNetwork(1)
-
-    #update forces acting on cells and velocities defined by those forces
-    Cells = CellDynamics.UpdateForces(Cells)
-
-    #for each cell, updates position due to calculated velocity and appends cell artist information or positions as required
-    #due to simulation types. Updating position is a separate loop to allow all cell velocities to update changing positions.
-    for n, cell in enumerate(Cells):
-        Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
-        RecordedPositions.append([cell.Position.X,cell.Position.Y])
-    return Cells, RecordedPositions
-
-     
+#####################################################################################################################################
 
 # If running in real time, runs simulation and updates output plots
 # If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
 # on this saved data.
 # If reporting data only, runs simulation and outputs results
 
+
+
+Cells = Simulation.InitialiseCells()
+RecordedPositions=[]
+
 if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.SimulationType == "Replay":
-    Cells = SimulationVariables.InitialiseCells()
-    RecordedPositions=[]
-    figure, axes = SimulationVariables.InitialisePlot()
-    SimulationVariables.InitialiseLegend(axes)
-    SimulationVariables.InitialiseScalebar(axes, figure)
+    figure, axes = Simulation.InitialisePlot()
+    Simulation.InitialiseLegend(axes)
+    Simulation.InitialiseScalebar(axes, figure)
     timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
     for cell in Cells:
         axes.add_artist(cell.Draw())
     plt.ion()
 
 if SimulationVariables.SimulationType == "RealTime":
-
     for tick in range(SimulationVariables.TickNumber):
         timer.set_text(str(tick*SimulationVariables.TickLength)+"s")
-        Cells, NewPosition = Simulate(Cells)
+        Cells, NewPosition = Simulation.Simulate(Cells)
+        RecordedPositions.append(NewPosition)
         plt.pause(0.025)
 
 elif SimulationVariables.SimulationType == "Replay":
     for tick in range(SimulationVariables.TickNumber):
-        Cells, NewPosition = Simulate(Cells)
+        Cells, NewPosition = Simulation.Simulate(Cells)
         RecordedPositions.append(NewPosition)
 
     for tick in range(SimulationVariables.TickNumber):
@@ -107,10 +91,12 @@ elif SimulationVariables.SimulationType == "Replay":
            
 elif SimulationVariables.SimulationType == "Report":
     for tick in range(SimulationVariables.TickNumber):
-        Cells, NewPosition = Simulate(Cells)
+        Cells, NewPosition = Simulation.Simulate(Cells)
         RecordedPositions.append(NewPosition)
-  
-#calculate results from RecordedPositions
+
+#calculate results from RecordedPositions and starting positions
+Simulation.Results(Simulation.InitialiseCells(), RecordedPositions)
+
 
 plt.close(figure)
 

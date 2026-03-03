@@ -1,6 +1,5 @@
 import matplotlib.patches as mpatches
 import math
-import time
 import numpy as np
 
 class XY:
