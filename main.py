@@ -44,8 +44,6 @@ import SimulationVariables, Simulation
 ############7.2: Finish "Fill" arrangement 
 ############7.3: Random variation in cell size
 
-############8.1: Check if RealTime simulations give different results to Replays and Reports
-
 #####################################################################################################################################
 
 # If running in real time, runs simulation and updates output plots
@@ -104,7 +102,6 @@ elif SimulationVariables.SimulationType == "Report":
 Simulation.Results(Simulation.InitialiseCells(), RecordedPositions)
 
 
-plt.close(figure)
 
 ########################################################################################
 
