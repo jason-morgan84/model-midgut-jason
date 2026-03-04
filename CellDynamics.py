@@ -43,7 +43,7 @@ def Proximity(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     
     return ProximityForceX, ProximityForceY
 
-def Adhesion(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
+def Adhesion(Cell, Neighbour):
 
     # Attractive forces due to adhesion
     
@@ -52,21 +52,27 @@ def Adhesion(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     # AdhesionForceDistance defines the maximum distance at which an attractive force is felt.
     # Above AdhesionForceDistance, no attractive force is felt.
     # At AdhesionForceDistance, a maximum attractive force is felt.
-    # This maximum attractive force is defined by AdhesionForce.
+    # This maximum attractive force is defined by Cell.Interactions.AdhesionForce, and varies between cell types.
     # As the gap between the cells decreases from AdhesionForceDistance to AdhesionDistance, attractive force decreases to 0
     # According to the formula Force = AdhesionForce * (Gap/AdhesionForceDistance)^3
+    
+    CellPosition = Cell.Position
+    CellRadius = Cell.Morphology.Radius
 
-    Distance = math.hypot(Cell2Position.Y - Cell1Position.Y, Cell2Position.X - Cell1Position.X)
-    Gap = Distance - Cell1Radius - Cell2Radius
+    NeighbourPosition = Neighbour.Position
+    NeighbourRadius = Neighbour.Morphology.Radius
+
+    Distance = math.hypot(NeighbourPosition.Y - CellPosition.Y, NeighbourPosition.X - CellPosition.X)
+    Gap = Distance - CellRadius - NeighbourRadius
 
     if Gap <= SimulationVariables.AdhesionForceDistance:
         if Gap >= SimulationVariables.AdhesionDistance:
-            AdhesionForceMagnitude = ((Gap/(SimulationVariables.AdhesionForceDistance)) ** 3) * SimulationVariables.AdhesionForce
+            AdhesionForceMagnitude = ((Gap/(SimulationVariables.AdhesionForceDistance)) ** 3) * Cell.Interactions.AdhesionForce
         elif Gap < SimulationVariables.AdhesionDistance:
             AdhesionForceMagnitude = 0
 
-        DirectionUnitVectorX = (Cell2Position.X - Cell1Position.X) / Distance
-        DirectionUnitVectorY = (Cell2Position.Y - Cell1Position.Y) / Distance
+        DirectionUnitVectorX = (NeighbourPosition.X - CellPosition.X) / Distance
+        DirectionUnitVectorY = (NeighbourPosition.Y - CellPosition.Y) / Distance
 
         AdhesionForceX = DirectionUnitVectorX * AdhesionForceMagnitude
         AdhesionForceY = DirectionUnitVectorY * AdhesionForceMagnitude
@@ -88,7 +94,7 @@ def Signalling(Cell1Type, Cell2Type, Cell1Position, Cell2Position):
     #print(AdjacentCellType)
     return AdjacentCellType
 
-def IntrinsicForces(InternalForceVector):
+def IntrinsicForces(Cell):
     # Cell intrinsic forces
     # If maximum internal force (InternalForce) is not 0 and there is no internal force on the cell
     # A random force (between 0 and InternalForce) is applied to the cell in a random direction.
@@ -97,14 +103,15 @@ def IntrinsicForces(InternalForceVector):
     # If directionality is 1, the force will be in the same direction.
     # If directionality is 0, the force will be in a random direction.
     # If directionality is 0.5, the force will be within 90 degrees of the current force direction.
+    InternalForceVector = Cell.Dynamics.InternalForce
 
-    if InternalForceVector.X == 0 and InternalForceVector.Y == 0 and SimulationVariables.InternalForce != 0:
+    if InternalForceVector.X == 0 and InternalForceVector.Y == 0 and Cell.Interactions.InternalForce != 0:
         InternalForceDirection = np.random.random() * 2 * math.pi
-        InternalForceMagnitude = np.random.random() * SimulationVariables.InternalForce
-    elif SimulationVariables.InternalForce != 0:
+        InternalForceMagnitude = np.random.random() * Cell.Interactions.InternalForce
+    elif Cell.Interactions.InternalForce != 0:
         InternalForceDirection = math.atan2(InternalForceVector.X,InternalForceVector.Y)
-        InternalForceDirection += (np.random.random() - 0.5 ) * 2 * math.pi * (1 - SimulationVariables.Directionality)
-        InternalForceMagnitude = np.random.random() * SimulationVariables.InternalForce
+        InternalForceDirection += (np.random.random() - 0.5 ) * 2 * math.pi * (1 - Cell.Interactions.InternalDirectionality)
+        InternalForceMagnitude = np.random.random() * Cell.Interactions.InternalForce
     else:
         InternalForceMagnitude = 0
         InternalForceDirection = 0
@@ -117,6 +124,7 @@ def IntrinsicForces(InternalForceVector):
 def UpdateForces(Cells, n):
     cell = Cells[n]
     #Get cell properties for force calculations
+
     CellRadius = cell.Morphology.Radius
     CellVelocityX = cell.Dynamics.Velocity.X
     CellVelocityY = cell.Dynamics.Velocity.Y
@@ -139,7 +147,7 @@ def UpdateForces(Cells, n):
         ProximityForceY += NewProximityForceY
         
         #get forces due to adhesions from each neighbour and increment
-        NewAdhesionForceX, NewAdhesionForceY = Adhesion(CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
+        NewAdhesionForceX, NewAdhesionForceY = Adhesion(cell, Cells[neighbour])
         AdhesionForceX += NewAdhesionForceX
         AdhesionForceY += NewAdhesionForceY
 
@@ -153,7 +161,7 @@ def UpdateForces(Cells, n):
     SpeedLimitForceX, SpeedLimitForceY = Drag(CellVelocityX, CellVelocityY)
 
     #get forces from cell intrinsic activities
-    InternalForceX, InternalForceY = IntrinsicForces(cell.Dynamics.InternalForce)
+    InternalForceX, InternalForceY = IntrinsicForces(cell)
     
     #sum x and y force components
     TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX

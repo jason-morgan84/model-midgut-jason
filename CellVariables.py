@@ -4,7 +4,9 @@ import CellClasses
 #Define cell types and starting positions
 OverallCellTypes=[]
 
-OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Dynamic = True, Format = CellClasses.Format(FillColour = 'powderblue'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Dynamic = True, 
+                Format = CellClasses.Format(FillColour = 'powderblue'),
+                Interactions = CellClasses.Interactions(AdhesionForce = 0.001, InternalForce = 0.001, InternalDirectionality = 0),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "UpperPMEC",
@@ -19,7 +21,9 @@ OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Dynamic = True, For
                         Arrange = "XAlign",
                         Number = 30)]))
 
-OverallCellTypes.append(CellClasses.CellTypes(Name = "VM", Dynamic = False, Format = CellClasses.Format(FillColour = 'plum'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "VM", Dynamic = False,
+                Format = CellClasses.Format(FillColour = 'plum'),
+                Interactions = CellClasses.Interactions(AdhesionForce = 0, InternalForce = 0, InternalDirectionality = 0),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "UpperVM",
@@ -34,7 +38,9 @@ OverallCellTypes.append(CellClasses.CellTypes(Name = "VM", Dynamic = False, Form
                         Arrange = "XAlign",
                         Number = 100)]))
 
-OverallCellTypes.append(CellClasses.CellTypes(Name = "Other", Dynamic = True, Format = CellClasses.Format(FillColour = 'palegreen'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "Other", Dynamic = True,
+                Format = CellClasses.Format(FillColour = 'palegreen'),
+                Interactions = CellClasses.Interactions(AdhesionForce = 0.001, InternalForce = 0.001, InternalDirectionality = 0),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "Other",

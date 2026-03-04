@@ -1,16 +1,11 @@
 import matplotlib.pyplot as plt
-
-import numpy as np
-import matplotlib.animation as animation
 import math as math
 import SimulationVariables, Simulation
 
 
 # Main program loop
-# Uses Cell.py for:
-#       Classes defining cell types
-#       Classes defining cell starting locations
-#       Classes defining individual cell properties
+# Uses CellClasses.py for:
+#       Classes defining cell types, properties and starting locations
 #       Functions for adding cells, updating their properties and defining neighbouring cells
 #       Functions for defining artist variables for drawing using MatPlotLib
 # 
@@ -21,16 +16,16 @@ import SimulationVariables, Simulation
 #       Cell intrinsic forces (where does the cell want to go?)
 #       Drag forces
 #
-# Uses CellVariables.py to define the cell types and their starting locations
+# Uses CellVariables.py to define the cell types, their properties and their starting locations
 #
 # Uses SimulationVariables.py to define key constants governing the plot area, simulation and interactions between cells
 
 
 #TO DO:
+#2: Add starting positions to date recorded for each cell
+############2.2: Update calculation of results to use this new data
 
-#2: Add method to change variables by cell type
-
-#3: Tidy method to allow multiple repeats with different variables with single click
+#3: Add method to allow multiple repeats with different variables with single click
 
 #5: Comment CellClasses.py
 
@@ -46,16 +41,14 @@ import SimulationVariables, Simulation
 
 #####################################################################################################################################
 
-# If running in real time, runs simulation and updates output plots
-# If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
-# on this saved data.
-# If reporting data only, runs simulation and outputs results
+
 
 
 
 Cells = Simulation.InitialiseCells()
 RecordedPositions=[]
 
+# If running in real time or replay, sets up plot for animations
 if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.SimulationType == "Replay":
     figure, axes = Simulation.InitialisePlot()
     Simulation.InitialiseLegend(axes)
@@ -65,6 +58,7 @@ if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.Simul
         axes.add_artist(cell.Draw())
     plt.ion()
 
+# If running in real time, runs simulation, saves position of each cell at each tick and updates output plots
 if SimulationVariables.SimulationType == "RealTime":
     for tick in range(SimulationVariables.TickNumber):
         timer.set_text(str(tick*SimulationVariables.TickLength) + "s")
@@ -76,6 +70,8 @@ if SimulationVariables.SimulationType == "RealTime":
         RecordedPositions.append(NewPosition)
         plt.pause(0.025)
 
+# If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
+# on this saved data.
 elif SimulationVariables.SimulationType == "Replay":
     for tick in range(SimulationVariables.TickNumber):
         Cells = Simulation.Simulate(Cells)
@@ -89,7 +85,8 @@ elif SimulationVariables.SimulationType == "Replay":
         for n, cell in enumerate(position):
             Cells[n].SetPosition(position[n][0],position[n][1],True)
         plt.pause(0.025)
-           
+
+# If reporting data only, runs simulation and saves positin of each cell at each tick
 elif SimulationVariables.SimulationType == "Report":
     for tick in range(SimulationVariables.TickNumber):
         Cells = Simulation.Simulate(Cells)

@@ -1,6 +1,7 @@
 import matplotlib.patches as mpatches
 import math
 import numpy as np
+import SimulationVariables
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -18,13 +19,20 @@ class XY:
     
     def __str__(self):
         return '[' + str(self.X)+', '+str(self.Y)+']'
-
+    
+class Interactions:
+    def __init__(self, AdhesionForce = SimulationVariables.AdhesionForce, InternalForce = SimulationVariables.InternalForce, InternalDirectionality = SimulationVariables.Directionality):
+        self.AdhesionForce = AdhesionForce
+        self.InternalForce = InternalForce
+        self.InternalDirectionality = InternalDirectionality
+    
 class CellTypes:
-    def __init__(self, Name, StartingPosition, Format, Dynamic):
+    def __init__(self, Name, StartingPosition, Format, Dynamic, Interactions):
         self.Name = Name
         self.StartingPosition = StartingPosition
         self.Format = Format
         self.Dynamic = Dynamic
+        self.Interactions = Interactions
 
     def Initialise(self):
         OutputCellList=[]
@@ -53,6 +61,7 @@ class CellTypes:
                                 Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
+                                Interactions = self.Interactions,
                                 Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0), Dynamic = self.Dynamic),
                                 Neighbours=[])    
                             OutputCellList.append(NewCell)
@@ -71,6 +80,7 @@ class CellTypes:
                         Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
+                        Interactions = self.Interactions,
                         Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0), Dynamic = self.Dynamic),
                         Neighbours=[])
                     #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
@@ -83,6 +93,7 @@ class CellTypes:
                     Type = self.Name,
                     Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
+                    Interactions = self.Interactions,
                     Format = self.Format,
                     Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0), Dynamic = self.Dynamic),
                     Neighbours=[])
@@ -130,7 +141,7 @@ class Dynamics:
         self.Dynamic = Dynamic
 
 class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Neighbours):
+    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Interactions, Neighbours):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #Class containing information about cells position, orientation. Also stores coords of vertices.
@@ -138,6 +149,7 @@ class Cells:
         self.Format = Format #class containing information about the cells fill and line colour
         self.Dynamics = Dynamics #class containing information about cell speed and forces applied
         self.Neighbours = Neighbours #list of XY coordinates of nearby cells 
+        self.Interactions = Interactions
 
     def __getitem__(self,index):
         return getattr(self,index)
@@ -152,7 +164,6 @@ class Cells:
             zorder = 5)
         return self.artist
         
-   
     def UpdatePosition(self, XChange, YChange, UpdateArtist = False):
         self.Position.X += XChange
         self.Position.Y += YChange
