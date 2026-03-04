@@ -1,7 +1,7 @@
 import matplotlib.patches as mpatches
 import math
-import time
 import numpy as np
+import SimulationVariables
 
 class XY:
     def __init__(self, X=0, Y=0):
@@ -19,12 +19,20 @@ class XY:
     
     def __str__(self):
         return '[' + str(self.X)+', '+str(self.Y)+']'
-
+    
+class Interactions:
+    def __init__(self, AdhesionForce = SimulationVariables.AdhesionForce, InternalForce = SimulationVariables.InternalForce, InternalDirectionality = SimulationVariables.Directionality):
+        self.AdhesionForce = AdhesionForce
+        self.InternalForce = InternalForce
+        self.InternalDirectionality = InternalDirectionality
+    
 class CellTypes:
-    def __init__(self, Name, StartingPosition, Format):
-        self.Name=Name
+    def __init__(self, Name, StartingPosition, Format, Dynamic, Interactions):
+        self.Name = Name
         self.StartingPosition = StartingPosition
-        self.Format=Format
+        self.Format = Format
+        self.Dynamic = Dynamic
+        self.Interactions = Interactions
 
     def Initialise(self):
         OutputCellList=[]
@@ -53,7 +61,8 @@ class CellTypes:
                                 Position = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
-                                Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0)),
+                                Interactions = self.Interactions,
+                                Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0), Dynamic = self.Dynamic),
                                 Neighbours=[])    
                             OutputCellList.append(NewCell)
             elif position.Arrange == 'XAlign' or position.Arrange == 'YAlign':
@@ -71,7 +80,8 @@ class CellTypes:
                         Position = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
-                        Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0)),
+                        Interactions = self.Interactions,
+                        Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0), Dynamic = self.Dynamic),
                         Neighbours=[])
                     #NewCell.Position.Vertices = NewCell.GetCellCoords()                   
                     OutputCellList.append(NewCell)
@@ -83,8 +93,9 @@ class CellTypes:
                     Type = self.Name,
                     Position = XY(x_position, y_position),
                     Morphology = position.Morphology,
+                    Interactions = self.Interactions,
                     Format = self.Format,
-                    Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0)),
+                    Dynamics = Dynamics(Velocity = XY(0,0), AppliedForce = XY(0,0), InternalForce = XY(0,0), Dynamic = self.Dynamic),
                     Neighbours=[])
                 OutputCellList.append(NewCell)
         return OutputCellList
@@ -117,19 +128,20 @@ class Format:
         self.LineWidth = LineWidth
 
 class Dynamics:
-    # This class defines the forces applied to a cell leading to a given Velocity.
-    # Each is defined as an XY class giving an x-component and y-component of each vector.
-    # Cells experience applied forces from their neighbours and environment (applied force)
-    # and an internal force caused by the cells own activities.
+    # This class defines the forces applied to a cell leading to any changes in accelearation, velocity and position.
+    # If Dynamic is False, changes in force and position of the cell are not calcuated during simulation.
+    # Each variable is defined as an XY class giving an x-component and y-component of each vector.
+    # Cells experience applied forces from their neighbours and environment (applied force) and an internal force caused by the cells own activities.
     # These forces generate acceleration (in proportion to the cells radius (and density, but currently this is assumed to be constant between cells))
     # and this acceleration leads to a change in Velocity, also stored as a vector in xy component form.
-    def __init__(self, AppliedForce=XY(0,0), InternalForce = XY(0,0), Velocity=XY(0,0)):
+    def __init__(self, AppliedForce=XY(0,0), InternalForce = XY(0,0), Velocity=XY(0,0), Dynamic = True):
         self.AppliedForce = AppliedForce
         self.InternalForce = InternalForce
-        self.Velocity=Velocity
+        self.Velocity = Velocity
+        self.Dynamic = Dynamic
 
 class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Neighbours):
+    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Interactions, Neighbours):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #Class containing information about cells position, orientation. Also stores coords of vertices.
@@ -137,6 +149,7 @@ class Cells:
         self.Format = Format #class containing information about the cells fill and line colour
         self.Dynamics = Dynamics #class containing information about cell speed and forces applied
         self.Neighbours = Neighbours #list of XY coordinates of nearby cells 
+        self.Interactions = Interactions
 
     def __getitem__(self,index):
         return getattr(self,index)
@@ -151,18 +164,21 @@ class Cells:
             zorder = 5)
         return self.artist
         
-   
-    def UpdatePosition(self,XChange,YChange):
+    def UpdatePosition(self, XChange, YChange, UpdateArtist = False):
         self.Position.X += XChange
         self.Position.Y += YChange
 
-        self.artist.center = self.Position.AsList()
+        if UpdateArtist == True:
+            self.artist.center = self.Position.AsList()
 
-
-    def SetPosition(self,X,Y):
+    def SetPosition(self, X, Y, UpdateArtist = False):
         self.Position.X = X
         self.Position.Y = Y
- 
+
+        if UpdateArtist == True:
+            self.artist.center = self.Position.AsList()
+
+    def UpdateArtist(self):
         self.artist.center = self.Position.AsList()
 
 class CellList:
