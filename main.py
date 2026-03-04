@@ -29,6 +29,8 @@ import SimulationVariables, Simulation
 
 #3: Add method to allow multiple repeats with different variables with single click
 
+#4: Adjust animations to allow interaction during pauses
+
 #5: Comment CellClasses.py
 ############5.2: Add workflow to comments above
 
