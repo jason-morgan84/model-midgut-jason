@@ -25,8 +25,8 @@ def InitialiseCells():
     Cells = CellClasses.CellList()
     # For each cell type, intialise starting positions of those cells, add cells to Cells variable and add cell type to legend
     for type in CellVariables.OverallCellTypes:
-        for EachCell in type.Initialise():
-            Cells.AddCell(EachCell)
+        for cell in type.Initialise():
+            Cells.AddCell(cell)
     return Cells
 
 def InitialiseLegend(axes):

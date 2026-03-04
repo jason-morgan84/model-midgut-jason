@@ -21,9 +21,25 @@ import SimulationVariables, Simulation
 # Uses SimulationVariables.py to define key constants governing the plot area, simulation and interactions between cells
 #
 # Uses Simulation.py to define main simulation loop and result calculation
+#
+#
+# 1: Initialises list of all cells by creating cells of each cell type defined in CellVariables.py
+# 2: Initialises plot for animation (if required)
+# 3: Draws cells (if required)
+# 4: Carries out simulation for number of ticks defined in SimulationVariables.py
+# 5: For each tick:
+######## - Calculates neighbouring cells for each cell
+######## - Calculates forces applied to cell by itself and its neighbours (in x and y components)
+######## - Calculates overall acceleartion applied to cell (in x and y components)
+######## - Calculates velocity of each cell (in x and y components)
+# 6: Moves cell to new position (once forces/acceleration/velocity have been calculated for ALL cells in current position)
+# 7: Updates actor positions (if required)
+# 8: For each cell, gets its new position and adds it to record of positions of each cell for each tick
+# 9: After simulation, uses recorded positions to calculate measurements of interest
 
 
 #TO DO:
+#0: Update results to only use cells with x > 0
 
 #1: Is there some way to avoid oscilations and bouncing apart in nearby cells - adhesion pulls them together then repulsion pushes them apart
 
@@ -52,46 +68,56 @@ import SimulationVariables, Simulation
 
 
 
-
+# 1: Initialises list of all cells by creating cells of each cell type defined in CellVariables.py
 Cells = Simulation.InitialiseCells()
 RecordedPositions=[]
 
+# 2: Initialises plot for animation (if required)
 # If running in real time or replay, sets up plot for animations
 if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.SimulationType == "Replay":
     figure, axes = Simulation.InitialisePlot()
     Simulation.InitialiseLegend(axes)
     Simulation.InitialiseScalebar(axes, figure)
     timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
+    # 3: Draws cells (if required)
     for cell in Cells:
         axes.add_artist(cell.Draw())
     plt.ion()
 
-# If running in real time, runs simulation, saves position of each cell at each tick and updates output plots
+# 4: Carries out simulation for number of ticks defined in SimulationVariables.py
+# If running in real time, runs simulation, animates and saves position of each cell at each tick
 if SimulationVariables.SimulationType == "RealTime":
     for tick in range(SimulationVariables.TickNumber):
         timer.set_text(str(tick*SimulationVariables.TickLength) + "s")
         Cells = Simulation.Simulate(Cells)
         NewPosition = []
         for cell in Cells:
+            # 6: Moves cell to new position (once forces/acceleration/velocity have been calculated for ALL cells in current position)
             NewPosition.append([cell.Position.X,cell.Position.Y])
+            # 7: Updates actor positions (if required)
             cell.UpdateArtist()
+        # 8: For each cell, gets its new position and adds it to record of positions of each cell for each tick
         RecordedPositions.append(NewPosition)
         plt.pause(0.025)
 
-# If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based
-# on this saved data.
+# 4: Carries out simulation for number of ticks defined in SimulationVariables.py
+# If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based on saved data.
 elif SimulationVariables.SimulationType == "Replay":
     for tick in range(SimulationVariables.TickNumber):
         Cells = Simulation.Simulate(Cells)
         NewPosition = []
         for cell in Cells:
+            
             NewPosition.append([cell.Position.X,cell.Position.Y])
         RecordedPositions.append(NewPosition)
       
     for tick, position in enumerate(RecordedPositions):
         timer.set_text(str(tick*SimulationVariables.TickLength)+"s")
         for n, cell in enumerate(position):
-            Cells[n].SetPosition(position[n][0],position[n][1],True)
+            # 6: Moves cell to new position (once forces/acceleration/velocity have been calculated for ALL cells in current position)
+            Cells[n].SetPosition(position[n][0],position[n][1])
+            # 7: Updates actor positions (if required)
+            cell.UpdateArtist()
         plt.pause(0.025)
 
 # If reporting data only, runs simulation and saves positin of each cell at each tick
