@@ -28,13 +28,11 @@ import SimulationVariables, Simulation
 
 #TO DO:
 
-#1: Add method for measuring results of interest
-
 #2: Add method to change variables by cell type
 
 #3: Tidy method to allow multiple repeats with different variables with single click
 
-#5: Comment Cell.py
+#5: Comment CellClasses.py
 
 #6: Consider changes to adjacency at diagonals
 ############6.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
@@ -46,7 +44,6 @@ import SimulationVariables, Simulation
 ############7.2: Finish "Fill" arrangement 
 ############7.3: Random variation in cell size
 
-#8: Fix replay mode animation
 ############8.1: Check if RealTime simulations give different results to Replays and Reports
 
 #####################################################################################################################################
@@ -72,26 +69,35 @@ if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.Simul
 
 if SimulationVariables.SimulationType == "RealTime":
     for tick in range(SimulationVariables.TickNumber):
-        timer.set_text(str(tick*SimulationVariables.TickLength)+"s")
-        Cells, NewPosition = Simulation.Simulate(Cells)
+        timer.set_text(str(tick*SimulationVariables.TickLength) + "s")
+        Cells = Simulation.Simulate(Cells)
+        NewPosition = []
+        for cell in Cells:
+            NewPosition.append([cell.Position.X,cell.Position.Y])
+            cell.UpdateArtist()
         RecordedPositions.append(NewPosition)
         plt.pause(0.025)
 
 elif SimulationVariables.SimulationType == "Replay":
     for tick in range(SimulationVariables.TickNumber):
-        Cells, NewPosition = Simulation.Simulate(Cells)
+        Cells = Simulation.Simulate(Cells)
+        NewPosition = []
+        for cell in Cells:
+            NewPosition.append([cell.Position.X,cell.Position.Y])
         RecordedPositions.append(NewPosition)
-
-    for tick in range(SimulationVariables.TickNumber):
+      
+    for tick, position in enumerate(RecordedPositions):
         timer.set_text(str(tick*SimulationVariables.TickLength)+"s")
-        for position in RecordedPositions:
-            for n, cell in enumerate(position):
-                Cells[n].SetPosition(cell[0],cell[1])
+        for n, cell in enumerate(position):
+            Cells[n].SetPosition(position[n][0],position[n][1],True)
         plt.pause(0.025)
            
 elif SimulationVariables.SimulationType == "Report":
     for tick in range(SimulationVariables.TickNumber):
-        Cells, NewPosition = Simulation.Simulate(Cells)
+        Cells = Simulation.Simulate(Cells)
+        NewPosition = []
+        for cell in Cells:
+            NewPosition.append([cell.Position.X,cell.Position.Y])
         RecordedPositions.append(NewPosition)
 
 #calculate results from RecordedPositions and starting positions

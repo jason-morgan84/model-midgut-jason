@@ -4,7 +4,7 @@ import CellClasses
 #Define cell types and starting positions
 OverallCellTypes=[]
 
-OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Format = CellClasses.Format(FillColour = 'powderblue'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Dynamic = True, Format = CellClasses.Format(FillColour = 'powderblue'),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "UpperPMEC",
@@ -19,7 +19,7 @@ OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Format = CellClasse
                         Arrange = "XAlign",
                         Number = 30)]))
 
-OverallCellTypes.append(CellClasses.CellTypes(Name = "VM",Format = CellClasses.Format(FillColour = 'plum'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "VM", Dynamic = False, Format = CellClasses.Format(FillColour = 'plum'),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "UpperVM",
@@ -34,7 +34,7 @@ OverallCellTypes.append(CellClasses.CellTypes(Name = "VM",Format = CellClasses.F
                         Arrange = "XAlign",
                         Number = 100)]))
 
-OverallCellTypes.append(CellClasses.CellTypes(Name = "Other",Format = CellClasses.Format(FillColour = 'palegreen'),
+OverallCellTypes.append(CellClasses.CellTypes(Name = "Other", Dynamic = True, Format = CellClasses.Format(FillColour = 'palegreen'),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "Other",

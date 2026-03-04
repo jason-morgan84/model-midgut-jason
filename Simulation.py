@@ -22,7 +22,7 @@ def InitialisePlot():
     
 # Initialise CellList variable which will contain a list of all cells with positions, shapes, movement etc.
 def InitialiseCells():
-    Cells=CellClasses.CellList()
+    Cells = CellClasses.CellList()
     # For each cell type, intialise starting positions of those cells, add cells to Cells variable and add cell type to legend
     for type in CellVariables.OverallCellTypes:
         for EachCell in type.Initialise():
@@ -52,19 +52,19 @@ def InitialiseScalebar(axes,figure):
 #########################################Simulation#########################################
 # Simulation function - defines what to do on each tick of the simulation
 def Simulate(Cells):
-    RecordedPositions = []
-    #update network of neighbouring cells
+    # update network of neighbouring cells
     Cells.GenerateNodeNetwork(1)
 
-    #update forces acting on cells and velocities defined by those forces
-    Cells = CellDynamics.UpdateForces(Cells)
-
-    #for each cell, updates position due to calculated velocity and appends cell artist information or positions as required
-    #due to simulation types. Updating position is a separate loop to allow all cell velocities to update changing positions.
     for n, cell in enumerate(Cells):
-        Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
-        RecordedPositions.append([cell.Position.X,cell.Position.Y])
-    return Cells, RecordedPositions
+        # update forces acting on cells and velocities defined by those forces
+        if cell.Dynamics.Dynamic == True:
+            Cells = CellDynamics.UpdateForces(Cells, n)
+            # for each cell, updates position due to calculated velocity and appends cell artist information or positions as required
+            # due to simulation types. Updating position is a separate loop to allow all cell velocities to update changing positions.
+    for n, cell in enumerate(Cells):
+        if cell.Dynamics.Dynamic == True:
+            Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
+    return Cells
 
 def Results(Cells, RecordedPositions):
     # For each cell, calculate average speed in an x direction (overall distance travelled in x / number of ticks) and 
@@ -91,12 +91,23 @@ def Results(Cells, RecordedPositions):
                 CurrentDistanceTravelledTotal = math.hypot(CurrentPositionX - StartingPositionX, CurrentPositionY - StartingPositionY)
             else:
                 pass
-        print(CurrentDistanceTravelledX,CurrentDistanceTravelledTotal)
         DistanceTravelledX.append(CurrentDistanceTravelledX)
         DistanceTravelledTotal.append(CurrentDistanceTravelledTotal)
 
-
+    Results=[]
     for type in CellVariables.OverallCellTypes:
+        nType = 0
+        TotalTravelledX = 0
+        TotalTravelledTotal = 0
         # get average speed in x direction and total speed for each cell type
         # consider splitting into only those whose x starting position > 0 to get visible cells only
-        print(type.Name)
+        for n, cell in enumerate(Cells):
+            if cell.Type == type.Name:
+                nType += 1
+                TotalTravelledX += DistanceTravelledX[n]
+                TotalTravelledTotal += DistanceTravelledTotal[n]
+        Results.append([type.Name,nType,TotalTravelledX,TotalTravelledTotal])
+    print(*Results,sep='\n')
+
+    for item in Results:
+        print("Type:", item[0], "Average Speed X:", (item[2]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength),"Average Speed Total:",(item[3]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength))

@@ -114,69 +114,66 @@ def IntrinsicForces(InternalForceVector):
 
     return InternalForceX, InternalForceY
 
-def UpdateForces(Cells):
-    for cell in Cells:
+def UpdateForces(Cells, n):
+    cell = Cells[n]
+    #Get cell properties for force calculations
+    CellRadius = cell.Morphology.Radius
+    CellVelocityX = cell.Dynamics.Velocity.X
+    CellVelocityY = cell.Dynamics.Velocity.Y
+    CellPosition = cell.Position
 
-        if cell.Type != "VM":
+    #Set-up force variables
+    ProximityForceX, ProximityForceY = 0, 0
+    AdhesionForceX, AdhesionForceY = 0, 0
+    MigrationForceX = 0
+    #loop through each neighbouring cell
+    for neighbour in cell.Neighbours:
 
-            #Get cell properties for force calculations
-            CellRadius = cell.Morphology.Radius
-            CellVelocityX = cell.Dynamics.Velocity.X
-            CellVelocityY = cell.Dynamics.Velocity.Y
-            CellPosition = cell.Position
+        #get neighbour cell properties for force calculations
+        NeighbourPosition = Cells[neighbour].Position
+        NeighbourRadius = Cells[neighbour].Morphology.Radius
 
-            #Set-up force variables
-            ProximityForceX, ProximityForceY = 0, 0
-            AdhesionForceX, AdhesionForceY = 0, 0
-            MigrationForceX = 0
-            #loop through each neighbouring cell
-            for neighbour in cell.Neighbours:
+        #get forces due to proximity from each neighbour and increment
+        NewProximityForceX, NewProximityForceY = Proximity(CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
+        ProximityForceX += NewProximityForceX
+        ProximityForceY += NewProximityForceY
+        
+        #get forces due to adhesions from each neighbour and increment
+        NewAdhesionForceX, NewAdhesionForceY = Adhesion(CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
+        AdhesionForceX += NewAdhesionForceX
+        AdhesionForceY += NewAdhesionForceY
 
-                #get neighbour cell properties for force calculations
-                NeighbourPosition = Cells[neighbour].Position
-                NeighbourRadius = Cells[neighbour].Morphology.Radius
-
-                #get forces due to proximity from each neighbour and increment
-                NewProximityForceX, NewProximityForceY = Proximity(CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
-                ProximityForceX += NewProximityForceX
-                ProximityForceY += NewProximityForceY
-                
-                #get forces due to adhesions from each neighbour and increment
-                NewAdhesionForceX, NewAdhesionForceY = Adhesion(CellPosition, NeighbourPosition, CellRadius, NeighbourRadius)
-                AdhesionForceX += NewAdhesionForceX
-                AdhesionForceY += NewAdhesionForceY
-
-                #update migration forces due to neighbouring cell types
-                if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
-                    if CellVelocityX < SimulationVariables.MigrationSpeed:
-                        MigrationForceX = SimulationVariables.MigrationForce  
+        #update migration forces due to neighbouring cell types
+        if cell.Type == "PMEC" and Cells[neighbour].Type == "VM":
+            if CellVelocityX < SimulationVariables.MigrationSpeed:
+                MigrationForceX = SimulationVariables.MigrationForce  
 
 
-            #get drag forces due to excessive speed
-            SpeedLimitForceX, SpeedLimitForceY = Drag(CellVelocityX, CellVelocityY)
+    #get drag forces due to excessive speed
+    SpeedLimitForceX, SpeedLimitForceY = Drag(CellVelocityX, CellVelocityY)
 
-            #get forces from cell intrinsic activities
-            InternalForceX, InternalForceY = IntrinsicForces(cell.Dynamics.InternalForce)
-            
-            #sum x and y force components
-            TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
-            TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY + InternalForceY
+    #get forces from cell intrinsic activities
+    InternalForceX, InternalForceY = IntrinsicForces(cell.Dynamics.InternalForce)
+    
+    #sum x and y force components
+    TotalForceX = SpeedLimitForceX + ProximityForceX + MigrationForceX + AdhesionForceX + InternalForceX
+    TotalForceY = SpeedLimitForceY + ProximityForceY + AdhesionForceY + InternalForceY
 
-            #calcuate acceleration components proportional to radius squared (assumes equal cell densities)
-            AccelerationX = TotalForceX/(CellRadius**2)
-            AccelerationY = TotalForceY/(CellRadius**2)
+    #calcuate acceleration components proportional to radius squared (assumes equal cell densities)
+    AccelerationX = TotalForceX/(CellRadius**2)
+    AccelerationY = TotalForceY/(CellRadius**2)
 
-            #increments cell velocity components based on acceleration and TickLength (in us)
-            CellVelocityX += AccelerationX * SimulationVariables.TickLength 
-            CellVelocityY += AccelerationY * SimulationVariables.TickLength 
+    #increments cell velocity components based on acceleration and TickLength (in us)
+    CellVelocityX += AccelerationX * SimulationVariables.TickLength 
+    CellVelocityY += AccelerationY * SimulationVariables.TickLength 
 
-            #sets new values of velocity components for each cell
-            cell.Dynamics.Velocity.X = CellVelocityX
-            cell.Dynamics.Velocity.Y = CellVelocityY
+    #sets new values of velocity components for each cell
+    cell.Dynamics.Velocity.X = CellVelocityX
+    cell.Dynamics.Velocity.Y = CellVelocityY
 
-            #sets new cell internal forces
-            cell.Dynamics.InternalForce.X = InternalForceX
-            cell.Dynamics.InternalForce.Y = InternalForceY
+    #sets new cell internal forces
+    cell.Dynamics.InternalForce.X = InternalForceX
+    cell.Dynamics.InternalForce.Y = InternalForceY
 
     return Cells
     
