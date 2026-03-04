@@ -19,15 +19,18 @@ import SimulationVariables, Simulation
 # Uses CellVariables.py to define the cell types, their properties and their starting locations
 #
 # Uses SimulationVariables.py to define key constants governing the plot area, simulation and interactions between cells
+#
+# Uses Simulation.py to define main simulation loop and result calculation
 
 
 #TO DO:
-#2: Add starting positions to date recorded for each cell
+#2: Add starting positions to data recorded for each cell
 ############2.2: Update calculation of results to use this new data
 
 #3: Add method to allow multiple repeats with different variables with single click
 
 #5: Comment CellClasses.py
+############5.2: Add workflow to comments above
 
 #6: Consider changes to adjacency at diagonals
 ############6.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
