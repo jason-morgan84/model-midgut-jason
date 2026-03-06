@@ -59,6 +59,7 @@ class CellTypes:
                                 ID = '-'.join((self.Name, position.ID, str(n))),
                                 Type = self.Name,
                                 Position = XY(x_position, y_position),
+                                StartingPosition = XY(x_position, y_position),
                                 Morphology = position.Morphology,
                                 Format = self.Format,
                                 Interactions = self.Interactions,
@@ -78,6 +79,7 @@ class CellTypes:
                         ID = '-'.join((self.Name,position.ID,str(n))),
                         Type = self.Name,
                         Position = XY(x_position, y_position),
+                        StartingPosition = XY(x_position, y_position),
                         Morphology = position.Morphology,
                         Format = self.Format,
                         Interactions = self.Interactions,
@@ -92,6 +94,7 @@ class CellTypes:
                     ID = '-'.join((self.Name,position.ID)),
                     Type = self.Name,
                     Position = XY(x_position, y_position),
+                    StartingPosition = XY(x_position, y_position),
                     Morphology = position.Morphology,
                     Interactions = self.Interactions,
                     Format = self.Format,
@@ -141,10 +144,11 @@ class Dynamics:
         self.Dynamic = Dynamic
 
 class Cells:
-    def __init__(self, ID, Type, Position, Morphology, Format, Dynamics, Interactions, Neighbours):
+    def __init__(self, ID, Type, Position, StartingPosition, Morphology, Format, Dynamics, Interactions, Neighbours):
         self.ID=ID
         self.Type=Type #Type of cell should match an item in CellTypes
         self.Position = Position #Class containing information about cells position, orientation. Also stores coords of vertices.
+        self.StartingPosition = StartingPosition
         self.Morphology = Morphology #class containing information about cells shape and size
         self.Format = Format #class containing information about the cells fill and line colour
         self.Dynamics = Dynamics #class containing information about cell speed and forces applied

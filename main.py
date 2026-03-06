@@ -39,12 +39,8 @@ import SimulationVariables, Simulation
 
 
 #TO DO:
-#0: Update results to only use cells with x > 0
 
 #1: Is there some way to avoid oscilations and bouncing apart in nearby cells - adhesion pulls them together then repulsion pushes them apart
-
-#2: Add starting positions to data recorded for each cell
-############2.2: Update calculation of results to use this new data
 
 #3: Add method to allow multiple repeats with different variables with single click
 
@@ -130,7 +126,7 @@ elif SimulationVariables.SimulationType == "Report":
         RecordedPositions.append(NewPosition)
 
 #calculate results from RecordedPositions and starting positions
-Simulation.Results(Simulation.InitialiseCells(), RecordedPositions)
+Simulation.Results(Cells, RecordedPositions)
 
 
 

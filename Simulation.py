@@ -66,6 +66,8 @@ def Simulate(Cells):
             Cells[n].UpdatePosition(cell.Dynamics.Velocity.X,cell.Dynamics.Velocity.Y)
     return Cells
 
+
+#########################################Results Calculation#########################################
 def Results(Cells, RecordedPositions):
     # For each cell, calculate average speed in an x direction (overall distance travelled in x / number of ticks) and 
     # average magnitude of the velocity (sum of absolute magnitude of distances travelled each tick / number of ticks)
@@ -73,8 +75,8 @@ def Results(Cells, RecordedPositions):
     DistanceTravelledTotal = []
 
     for n, cell in enumerate(Cells):
-        StartingPositionX = cell.Position.X
-        StartingPositionY = cell.Position.Y
+        StartingPositionX = cell.StartingPosition.X
+        StartingPositionY = cell.StartingPosition.Y
         FinishPositionX = RecordedPositions[len(RecordedPositions)-1][n][0]
 
         CurrentDistanceTravelledX = abs(FinishPositionX - StartingPositionX)
@@ -102,12 +104,12 @@ def Results(Cells, RecordedPositions):
         # get average speed in x direction and total speed for each cell type
         # consider splitting into only those whose x starting position > 0 to get visible cells only
         for n, cell in enumerate(Cells):
-            if cell.Type == type.Name:
+            if cell.Type == type.Name and cell.StartingPosition.X > 0:
                 nType += 1
                 TotalTravelledX += DistanceTravelledX[n]
                 TotalTravelledTotal += DistanceTravelledTotal[n]
         Results.append([type.Name,nType,TotalTravelledX,TotalTravelledTotal])
-    print(*Results,sep='\n')
+    #print(*Results,sep='\n')
 
     for item in Results:
         print("Type:", item[0], "Average Speed X:", (item[2]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength),"Average Speed Total:",(item[3]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength))

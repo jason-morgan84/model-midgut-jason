@@ -6,7 +6,7 @@ OverallCellTypes=[]
 
 OverallCellTypes.append(CellClasses.CellTypes(Name = "PMEC", Dynamic = True, 
                 Format = CellClasses.Format(FillColour = 'powderblue'),
-                Interactions = CellClasses.Interactions(AdhesionForce = 0.04, InternalForce = 0.01, InternalDirectionality = 0),
+                Interactions = CellClasses.Interactions(AdhesionForce = 0.045, InternalForce = 0.01, InternalDirectionality = 0),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "UpperPMEC",
@@ -40,14 +40,14 @@ OverallCellTypes.append(CellClasses.CellTypes(Name = "VM", Dynamic = False,
 
 OverallCellTypes.append(CellClasses.CellTypes(Name = "Other", Dynamic = True,
                 Format = CellClasses.Format(FillColour = 'palegreen'),
-                Interactions = CellClasses.Interactions(AdhesionForce = 0.05, InternalForce = 0.01, InternalDirectionality = 0),
+                Interactions = CellClasses.Interactions(AdhesionForce = 0.03, InternalForce = 0.01, InternalDirectionality = 0),
                 StartingPosition = 
                     [CellClasses.StartingPosition(
                         ID = "Other",
                         Position = CellClasses.XY(-41,7),
                         Morphology = CellClasses.Morphology(Radius = 1),
                         Arrange = 'Pack',
-                        DrawLimits = CellClasses.XY(21,15.67),
+                        DrawLimits = CellClasses.XY(20,15.67),
                         Density = 1)]))
 
 """ OverallCellTypes.append(Cell.CellTypes(Name = "Other",Format = Cell.Format(FillColour = 'palegreen'),
