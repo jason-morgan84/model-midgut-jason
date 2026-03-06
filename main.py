@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
-import math as math
-import SimulationVariables, Simulation
+import Simulation
 
 
 # Main program loop
