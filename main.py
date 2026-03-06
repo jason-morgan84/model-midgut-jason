@@ -45,7 +45,8 @@ import SimulationVariables, Simulation
 #4: Adjust animations to allow interaction during pauses
 
 #5: Comment CellClasses.py
-############5.2: Add workflow to comments above
+############5.1: Add workflow to comments above
+############5.2: Finsih comments in Simulation function
 
 #6: Consider changes to adjacency at diagonals
 ############6.2: For adjacency, consider cell at 45 degrees but slightly further due to packing as just as adjacent as one as 90 degrees?
@@ -60,80 +61,12 @@ import SimulationVariables, Simulation
 #####################################################################################################################################
 
 
-def Main():
 
-    # 1: Initialises list of all cells by creating cells of each cell type defined in CellVariables.py
-    Cells = Simulation.InitialiseCells()
-    RecordedPositions=[]
-
-    # 2: Initialises plot for animation (if required)
-    # If running in real time or replay, sets up plot for animations
-    if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.SimulationType == "Replay":
-        figure, axes = Simulation.InitialisePlot()
-        Simulation.InitialiseLegend(axes)
-        Simulation.InitialiseScalebar(axes, figure)
-        timer = axes.annotate("0s", xy=(20, 21), xytext=(40,20),horizontalalignment='right',color = 'black')
-        # 3: Draws cells (if required)
-        for cell in Cells:
-            axes.add_artist(cell.Draw())
-        plt.ion()
-
-    # 4: Carries out simulation for number of ticks defined in SimulationVariables.py
-    # If running in real time, runs simulation, animates and saves position of each cell at each tick
-    if SimulationVariables.SimulationType == "RealTime":
-        for tick in range(SimulationVariables.TickNumber):
-            timer.set_text(str(tick*SimulationVariables.TickLength) + "s")
-            Cells = Simulation.Simulate(Cells)
-            NewPosition = []
-            for cell in Cells:
-                # 6: Moves cell to new position (once forces/acceleration/velocity have been calculated for ALL cells in current position)
-                NewPosition.append([cell.Position.X,cell.Position.Y])
-                # 7: Updates actor positions (if required)
-                cell.UpdateArtist()
-            # 8: For each cell, gets its new position and adds it to record of positions of each cell for each tick
-            RecordedPositions.append(NewPosition)
-            plt.pause(0.025)
-
-    # 4: Carries out simulation for number of ticks defined in SimulationVariables.py
-    # If running as a replay, runs the simulation through and saves position of each cell at each tick, then draws animation based on saved data.
-    elif SimulationVariables.SimulationType == "Replay":
-        for tick in range(SimulationVariables.TickNumber):
-            Cells = Simulation.Simulate(Cells)
-            NewPosition = []
-            for cell in Cells:
-                
-                NewPosition.append([cell.Position.X,cell.Position.Y])
-            RecordedPositions.append(NewPosition)
-        
-        for tick, position in enumerate(RecordedPositions):
-            timer.set_text(str(tick*SimulationVariables.TickLength)+"s")
-            for n, cell in enumerate(position):
-                # 6: Moves cell to new position (once forces/acceleration/velocity have been calculated for ALL cells in current position)
-                Cells[n].SetPosition(position[n][0],position[n][1])
-                # 7: Updates actor positions (if required)
-                cell.UpdateArtist()
-            plt.pause(0.025)
-
-    # If reporting data only, runs simulation and saves positin of each cell at each tick
-    elif SimulationVariables.SimulationType == "Report":
-        for tick in range(SimulationVariables.TickNumber):
-            Cells = Simulation.Simulate(Cells)
-            NewPosition = []
-            for cell in Cells:
-                NewPosition.append([cell.Position.X,cell.Position.Y])
-            RecordedPositions.append(NewPosition)
-
-    #calculate results from RecordedPositions and starting positions
-    Simulation.Results(Cells, RecordedPositions)
-
-    if figure:
-        plt.close()
 
 ########################################################################################
 
-Repeats = 3
+Repeats = 1
 
 for i in range (Repeats):
-    print(i)
-    Main()
+    Simulation.Simulate()
     

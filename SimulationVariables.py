@@ -8,7 +8,7 @@ SimulationType = "RealTime"       #   Simulate in real time ("RealTime"), simula
 
 #Variables defining speed of migration
 MigrationSpeed = 0.05            #   Speed of migrating cells (plot unit/tick)
-MigrationForce = 0#0.008           #   Force applied to a migrating cell
+MigrationForce = 0.008           #   Force applied to a migrating cell
 
 #Variables defining adhesion
 AdhesionDistance = 0.05          #   Distance of two adhered cells (plot unit)
