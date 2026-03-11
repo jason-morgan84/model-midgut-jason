@@ -96,15 +96,11 @@ def Results(Cells, RecordedPositions):
                 TotalTravelledTotal += DistanceTravelledTotal[n]
         Results.append([type.Name,nType,TotalTravelledX,TotalTravelledTotal])
     #print(*Results,sep='\n')
-
-    for item in Results:
-        print("Type:", item[0], "Average Speed X:", (item[2]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength),"Average Speed Total:",(item[3]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength))
-
+    return Results
+    
 #########################################Simulation#########################################
-def Simulate():
+def Simulate(Cells):
 
-    # 1: Initialises list of all cells by creating cells of each cell type defined in CellVariables.py
-    Cells = InitialiseCells()
     RecordedPositions=[]
 
     # 2: Initialises plot for animation (if required)
@@ -191,8 +187,7 @@ def Simulate():
 
             RecordedPositions.append(NewPosition)
 
-    #calculate results from RecordedPositions and starting positions
-    Results(Cells, RecordedPositions)
-
     if SimulationVariables.SimulationType == "RealTime" or SimulationVariables.SimulationType == "Replay":
         plt.close()
+    
+    return Cells, RecordedPositions

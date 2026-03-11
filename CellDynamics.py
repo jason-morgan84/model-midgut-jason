@@ -30,9 +30,9 @@ def Proximity(Cell1Position, Cell2Position, Cell1Radius, Cell2Radius):
     Gap = Distance - Cell1Radius - Cell2Radius
 
     if Gap < SimulationVariables.MinimumDesiredGap:
-        # Force magnitude defined by quadratic formula force = a*gap^2 + b*gap + c, where c = ProximityForce, b = -2*a*MinimumDesiredGap and a = MinimumDesiredGap**2/ProximityForce
-        # Simplified to ProximityForceMagnitude = (Gap*MinimumDesiredGap^2)/ProximityForce(Gap - 2 * MinimumDesiredGap) + ProximityForce
-        ProximityForceMagnitude = ((Gap * SimulationVariables.MinimumDesiredGap ** 2)  / SimulationVariables.ProximityForce) * (Gap - 2 * SimulationVariables.MinimumDesiredGap) + SimulationVariables.ProximityForce
+        # Force magnitude defined by quadratic formula force = a*gap^2 + b*gap + c, where c = ProximityForce, b = -2*a*MinimumDesiredGap and a = ProximityForce/MinimumDesiredGap**2
+        # Simplified to ProximityForceMagnitude = (ProximityForce*Gap(Gap - 2 * MinimumDesiredGap))/MinimumDesiredGap^2 + ProximityForce
+        ProximityForceMagnitude = (SimulationVariables.ProximityForce * Gap * (Gap - 2 * SimulationVariables.MinimumDesiredGap))/(SimulationVariables.MinimumDesiredGap**2) + SimulationVariables.ProximityForce 
         DirectionUnitVectorX = (Cell2Position.X - Cell1Position.X) / Distance
         DirectionUnitVectorY = (Cell2Position.Y - Cell1Position.Y) / Distance
         ProximityForceX = -DirectionUnitVectorX * ProximityForceMagnitude

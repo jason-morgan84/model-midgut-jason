@@ -1,6 +1,3 @@
-import Simulation
-
-
 # Main program loop
 # Uses CellClasses.py for:
 #       Classes defining cell types, properties and starting locations
@@ -59,12 +56,36 @@ import Simulation
 #####################################################################################################################################
 
 
+import Simulation, SimulationVariables, CellVariables
 
+Repeats = 3
 
-########################################################################################
+#adhesion force 0.0001,0.0005,0.001, 0.005, 0.01,0.05,0.1
+#migration speed 0.0005, 0.001, 0.005, 0.01,0.05,0.1
+#internal force 0.05,0.01,0.005
 
-Repeats = 1
+migration_speeds = [0.0005, 0.001, 0.005, 0.01,0.05,0.1]
+adhesion_force_others = [0.0001,0.0005,0.001, 0.005, 0.01,0.05,0.1]
+adhesion_force_pmec_multiples = [0.75,1,1.5,2]
+internal_forces = [0.001, 0.005, 0.01, 0.05, 0.1]
+print("migration_speed,adhesion_force_other,adhesion_force_pmec_multiple,internal_force,repeat,type,average_speed_x,average_speed_total")
 
-for i in range (Repeats):
-    Simulation.Simulate()
-    
+for migration_speed in migration_speeds:
+    SimulationVariables.MigrationSpeed = migration_speed
+    for adhesion_force in adhesion_force_others:
+        CellVariables.OverallCellTypes[2].Interactions.InternalForce = adhesion_force
+        for multiple in adhesion_force_pmec_multiples:
+            CellVariables.OverallCellTypes[0].Interactions.AdhesionForce = adhesion_force * multiple
+            for internal_force in internal_forces:
+                CellVariables.OverallCellTypes[0].Interactions.InternalForce = internal_force
+                CellVariables.OverallCellTypes[2].Interactions.InternalForce = internal_force
+                for i in range (Repeats):
+
+                    Cells = Simulation.InitialiseCells()
+                    Cells, RecordedPositions = Simulation.Simulate(Cells)
+                    Results = Simulation.Results(Cells, RecordedPositions)
+
+                    for item in Results:
+                        print(migration_speed,adhesion_force,multiple,internal_force,i,item[0],(item[2]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength),(item[3]/item[1])/(SimulationVariables.TickNumber*SimulationVariables.TickLength))
+
+            
